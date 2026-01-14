@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, Save, Briefcase, Calendar, Users, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, Briefcase, Calendar, Users, Eye, EyeOff, GripVertical } from 'lucide-react';
 import { Job } from '@/types/news';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -24,6 +24,118 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import {
+  DndContext,
+  closestCenter,
+  DragOverlay,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useTouchSortable } from '@/hooks/useTouchSortable';
+import { cn } from '@/lib/utils';
+
+// Draggable Job Card Component
+const DraggableJobCard = ({ job, onToggleStatus, onEdit, onDelete }: {
+  job: Job;
+  onToggleStatus: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: job.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'rounded-xl bg-card p-4 sm:p-6 border border-border hover:shadow-lg transition-shadow touch-manipulation',
+        isDragging && 'z-50 opacity-90 shadow-xl scale-[1.02]'
+      )}
+    >
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-start gap-3 flex-1">
+          <button
+            type="button"
+            className={cn(
+              'flex-shrink-0 p-2 rounded-md cursor-grab active:cursor-grabbing touch-manipulation mt-1',
+              'hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary',
+              isDragging && 'cursor-grabbing'
+            )}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <h3 className="font-display text-lg font-semibold text-foreground">{job.title}</h3>
+              <Badge variant={job.isOpen ? 'default' : 'secondary'}>
+                {job.isOpen ? 'Open' : 'Closed'}
+              </Badge>
+              <Badge variant="outline" className="capitalize">{job.type}</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground mb-2">{job.description}</p>
+            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+              <span>Department: {job.department}</span>
+              <span>Deadline: {format(job.deadline, 'MMM d, yyyy')}</span>
+              <span>Requirements: {job.requirements.length}</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 ml-auto md:ml-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleStatus}
+            title={job.isOpen ? 'Close job' : 'Open job'}
+          >
+            {job.isOpen ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onEdit}>
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="text-destructive" onClick={onDelete}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Drag Overlay for Jobs
+const JobDragOverlay = ({ job }: { job: Job }) => (
+  <div className="rounded-xl bg-card p-4 sm:p-6 border-2 border-primary shadow-2xl opacity-95">
+    <div className="flex items-center gap-3">
+      <GripVertical className="h-4 w-4 text-primary flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="font-display text-lg font-semibold text-foreground">{job.title}</h3>
+          <Badge variant={job.isOpen ? 'default' : 'secondary'}>
+            {job.isOpen ? 'Open' : 'Closed'}
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground mt-1">{job.department}</p>
+      </div>
+    </div>
+  </div>
+);
 
 const AdminJobs = () => {
   const [jobsList, setJobsList] = useState<Job[]>(initialJobs);
@@ -120,10 +232,30 @@ const AdminJobs = () => {
     toast.success('Job status updated!');
   };
 
+  // Drag-and-drop for jobs reordering
+  const jobsSortable = useTouchSortable({
+    items: jobsList,
+    getItemId: (job) => job.id,
+    onReorder: (newJobs) => {
+      setJobsList(newJobs);
+      toast.success('Job order updated');
+    },
+  });
+
+  const getActiveJob = () => {
+    if (!jobsSortable.activeId) return null;
+    return jobsList.find(j => j.id === jobsSortable.activeId);
+  };
+
   return (
     <div className="px-1 sm:px-0">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">Job Listings</h1>
+        <div>
+          <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">Job Listings</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">
+            Drag jobs to reorder • Touch and hold on mobile
+          </p>
+        </div>
         <Button onClick={openCreateDialog} size="sm" className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           New Job
@@ -167,53 +299,38 @@ const AdminJobs = () => {
         </div>
       </div>
 
-      {/* Jobs List */}
-      <div className="space-y-4">
-        {jobsList.map((job) => (
-          <div key={job.id} className="rounded-xl bg-card p-6 border border-border hover:shadow-lg transition-shadow">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <h3 className="font-display text-lg font-semibold text-foreground">{job.title}</h3>
-                  <Badge variant={job.isOpen ? 'default' : 'secondary'}>
-                    {job.isOpen ? 'Open' : 'Closed'}
-                  </Badge>
-                  <Badge variant="outline" className="capitalize">{job.type}</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mb-2">{job.description}</p>
-                <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                  <span>Department: {job.department}</span>
-                  <span>Deadline: {format(job.deadline, 'MMM d, yyyy')}</span>
-                  <span>Requirements: {job.requirements.length}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => toggleJobStatus(job.id)}
-                  title={job.isOpen ? 'Close job' : 'Open job'}
-                >
-                  {job.isOpen ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => openEditDialog(job)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(job.id)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+      {/* Jobs List with Drag-and-Drop */}
+      <DndContext
+        sensors={jobsSortable.sensors}
+        collisionDetection={closestCenter}
+        onDragStart={jobsSortable.handleDragStart}
+        onDragEnd={jobsSortable.handleDragEnd}
+        onDragCancel={jobsSortable.handleDragCancel}
+      >
+        <SortableContext items={jobsList.map(j => j.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-4">
+            {jobsList.map((job) => (
+              <DraggableJobCard
+                key={job.id}
+                job={job}
+                onToggleStatus={() => toggleJobStatus(job.id)}
+                onEdit={() => openEditDialog(job)}
+                onDelete={() => handleDelete(job.id)}
+              />
+            ))}
           </div>
-        ))}
+        </SortableContext>
+        <DragOverlay>
+          {getActiveJob() && <JobDragOverlay job={getActiveJob()!} />}
+        </DragOverlay>
+      </DndContext>
 
-        {jobsList.length === 0 && (
-          <div className="rounded-xl bg-muted p-12 text-center">
-            <Briefcase className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No jobs posted yet</p>
-          </div>
-        )}
-      </div>
+      {jobsList.length === 0 && (
+        <div className="rounded-xl bg-muted p-12 text-center">
+          <Briefcase className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">No jobs posted yet</p>
+        </div>
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col mx-4 sm:mx-auto">

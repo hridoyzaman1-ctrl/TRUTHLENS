@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Save, Newspaper, Layout, Settings2, GripVertical, X, Plus, Play, Pause } from 'lucide-react';
+import { Save, Newspaper, Layout, Settings2, X, Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,120 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { articles } from '@/data/mockData';
 import { featuredSettings as initialSettings } from '@/data/adminMockData';
 import { toast } from 'sonner';
+import {
+  DndContext,
+  closestCenter,
+  DragOverlay,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useTouchSortable } from '@/hooks/useTouchSortable';
+import { GripVertical } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface DraggableArticleProps {
+  id: string;
+  index: number;
+  article: {
+    title: string;
+    category: string;
+    featuredImage?: string;
+    hasVideo?: boolean;
+  };
+  showImage?: boolean;
+  onRemove: () => void;
+  getCategoryColor: (category: string) => string;
+}
+
+const DraggableArticle = ({ id, index, article, showImage, onRemove, getCategoryColor }: DraggableArticleProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'flex items-center gap-1.5 sm:gap-2 p-2 bg-card border border-border rounded-lg touch-manipulation',
+        isDragging && 'z-50 opacity-90 shadow-lg scale-[1.02] bg-muted'
+      )}
+    >
+      <button
+        type="button"
+        className={cn(
+          'flex-shrink-0 p-1 rounded cursor-grab active:cursor-grabbing touch-manipulation',
+          'hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary',
+          isDragging && 'cursor-grabbing'
+        )}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+      </button>
+      <span className="text-[10px] sm:text-xs font-bold text-muted-foreground w-4 sm:w-6 flex-shrink-0">{index + 1}</span>
+      {showImage && article.featuredImage && (
+        <img 
+          src={article.featuredImage} 
+          alt="" 
+          className="w-10 h-7 sm:w-12 sm:h-8 object-cover rounded flex-shrink-0"
+        />
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-xs sm:text-sm font-medium truncate">{article.title}</p>
+        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+          <Badge className={`${getCategoryColor(article.category)} text-white text-[9px] sm:text-[10px] border-0`}>
+            {article.category}
+          </Badge>
+          {article.hasVideo && (
+            <Badge variant="outline" className="text-[9px] sm:text-[10px]">Video</Badge>
+          )}
+        </div>
+      </div>
+      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 flex-shrink-0" onClick={onRemove}>
+        <X className="h-3 w-3 sm:h-4 sm:w-4" />
+      </Button>
+    </div>
+  );
+};
+
+const DragOverlayItem = ({ article, showImage, getCategoryColor }: { 
+  article: { title: string; category: string; featuredImage?: string; hasVideo?: boolean };
+  showImage?: boolean;
+  getCategoryColor: (category: string) => string;
+}) => (
+  <div className="flex items-center gap-1.5 sm:gap-2 p-2 bg-card border-2 border-primary rounded-lg shadow-xl opacity-95">
+    <GripVertical className="h-3 w-3 sm:h-4 sm:w-4 text-primary flex-shrink-0" />
+    <span className="text-[10px] sm:text-xs font-bold text-muted-foreground w-4 sm:w-6 flex-shrink-0">•</span>
+    {showImage && article.featuredImage && (
+      <img 
+        src={article.featuredImage} 
+        alt="" 
+        className="w-10 h-7 sm:w-12 sm:h-8 object-cover rounded flex-shrink-0"
+      />
+    )}
+    <div className="flex-1 min-w-0">
+      <p className="text-xs sm:text-sm font-medium truncate">{article.title}</p>
+      <Badge className={`${getCategoryColor(article.category)} text-white text-[9px] sm:text-[10px] border-0`}>
+        {article.category}
+      </Badge>
+    </div>
+  </div>
+);
 
 const AdminFeatured = () => {
   const [settings, setSettings] = useState(initialSettings);
@@ -41,7 +155,6 @@ const AdminFeatured = () => {
   };
 
   const handleSave = () => {
-    // In a real app, this would save to database
     toast.success('Featured settings saved successfully');
   };
 
@@ -56,6 +169,31 @@ const AdminFeatured = () => {
       entertainment: 'bg-fuchsia-500',
     };
     return colors[category] || 'bg-primary';
+  };
+
+  // Breaking News drag-and-drop
+  const breakingSortable = useTouchSortable({
+    items: breakingNewsIds,
+    getItemId: (id) => id,
+    onReorder: (newIds) => {
+      setBreakingNewsIds(newIds);
+      toast.success('Breaking news order updated');
+    },
+  });
+
+  // Hero drag-and-drop
+  const heroSortable = useTouchSortable({
+    items: heroFeaturedIds,
+    getItemId: (id) => id,
+    onReorder: (newIds) => {
+      setHeroFeaturedIds(newIds);
+      toast.success('Hero articles order updated');
+    },
+  });
+
+  const getActiveArticle = (activeId: string | null) => {
+    if (!activeId) return null;
+    return getArticleById(activeId);
   };
 
   return (
@@ -84,7 +222,7 @@ const AdminFeatured = () => {
               <Badge variant="outline" className="text-xs flex-shrink-0">{breakingNewsIds.length}/{settings.maxBreakingNews}</Badge>
             </div>
             <CardDescription className="text-xs sm:text-sm">
-              Articles for the breaking news ticker
+              Drag to reorder • Touch and hold on mobile
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 px-3 sm:px-6">
@@ -128,30 +266,43 @@ const AdminFeatured = () => {
               </div>
             </div>
 
-            {/* Selected Articles */}
+            {/* Selected Articles with Drag-and-Drop */}
             <div>
               <Label className="text-xs sm:text-sm font-medium">Selected Breaking News</Label>
-              <div className="space-y-2 mt-2">
-                {breakingNewsIds.map((id, index) => {
-                  const article = getArticleById(id);
-                  if (!article) return null;
-                  return (
-                    <div key={id} className="flex items-center gap-1.5 sm:gap-2 p-2 bg-card border border-border rounded-lg">
-                      <GripVertical className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground cursor-grab flex-shrink-0" />
-                      <span className="text-[10px] sm:text-xs font-bold text-muted-foreground w-4 sm:w-6 flex-shrink-0">{index + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs sm:text-sm font-medium truncate">{article.title}</p>
-                        <Badge className={`${getCategoryColor(article.category)} text-white text-[9px] sm:text-[10px] border-0`}>
-                          {article.category}
-                        </Badge>
-                      </div>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 flex-shrink-0" onClick={() => removeFromBreakingNews(id)}>
-                        <X className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
+              <DndContext
+                sensors={breakingSortable.sensors}
+                collisionDetection={closestCenter}
+                onDragStart={breakingSortable.handleDragStart}
+                onDragEnd={breakingSortable.handleDragEnd}
+                onDragCancel={breakingSortable.handleDragCancel}
+              >
+                <SortableContext items={breakingNewsIds} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-2 mt-2">
+                    {breakingNewsIds.map((id, index) => {
+                      const article = getArticleById(id);
+                      if (!article) return null;
+                      return (
+                        <DraggableArticle
+                          key={id}
+                          id={id}
+                          index={index}
+                          article={article}
+                          onRemove={() => removeFromBreakingNews(id)}
+                          getCategoryColor={getCategoryColor}
+                        />
+                      );
+                    })}
+                  </div>
+                </SortableContext>
+                <DragOverlay>
+                  {breakingSortable.activeId && getActiveArticle(breakingSortable.activeId) && (
+                    <DragOverlayItem
+                      article={getActiveArticle(breakingSortable.activeId)!}
+                      getCategoryColor={getCategoryColor}
+                    />
+                  )}
+                </DragOverlay>
+              </DndContext>
             </div>
 
             {/* Add Article */}
@@ -188,7 +339,7 @@ const AdminFeatured = () => {
               <Badge variant="outline" className="text-xs flex-shrink-0">{heroFeaturedIds.length}/{settings.maxHeroArticles}</Badge>
             </div>
             <CardDescription className="text-xs sm:text-sm">
-              Articles for the main hero carousel
+              Drag to reorder • Touch and hold on mobile
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 px-3 sm:px-6">
@@ -219,40 +370,45 @@ const AdminFeatured = () => {
               </div>
             </div>
 
-            {/* Selected Articles */}
+            {/* Selected Articles with Drag-and-Drop */}
             <div>
               <Label className="text-xs sm:text-sm font-medium">Featured Hero Articles</Label>
-              <div className="space-y-2 mt-2">
-                {heroFeaturedIds.map((id, index) => {
-                  const article = getArticleById(id);
-                  if (!article) return null;
-                  return (
-                    <div key={id} className="flex items-center gap-1.5 sm:gap-2 p-2 bg-card border border-border rounded-lg">
-                      <GripVertical className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground cursor-grab flex-shrink-0" />
-                      <span className="text-[10px] sm:text-xs font-bold text-muted-foreground w-4 sm:w-6 flex-shrink-0">{index + 1}</span>
-                      <img 
-                        src={article.featuredImage} 
-                        alt="" 
-                        className="w-10 h-7 sm:w-12 sm:h-8 object-cover rounded flex-shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs sm:text-sm font-medium truncate">{article.title}</p>
-                        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-                          <Badge className={`${getCategoryColor(article.category)} text-white text-[9px] sm:text-[10px] border-0`}>
-                            {article.category}
-                          </Badge>
-                          {article.hasVideo && (
-                            <Badge variant="outline" className="text-[9px] sm:text-[10px]">Video</Badge>
-                          )}
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 flex-shrink-0" onClick={() => removeFromHeroFeatured(id)}>
-                        <X className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
+              <DndContext
+                sensors={heroSortable.sensors}
+                collisionDetection={closestCenter}
+                onDragStart={heroSortable.handleDragStart}
+                onDragEnd={heroSortable.handleDragEnd}
+                onDragCancel={heroSortable.handleDragCancel}
+              >
+                <SortableContext items={heroFeaturedIds} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-2 mt-2">
+                    {heroFeaturedIds.map((id, index) => {
+                      const article = getArticleById(id);
+                      if (!article) return null;
+                      return (
+                        <DraggableArticle
+                          key={id}
+                          id={id}
+                          index={index}
+                          article={article}
+                          showImage
+                          onRemove={() => removeFromHeroFeatured(id)}
+                          getCategoryColor={getCategoryColor}
+                        />
+                      );
+                    })}
+                  </div>
+                </SortableContext>
+                <DragOverlay>
+                  {heroSortable.activeId && getActiveArticle(heroSortable.activeId) && (
+                    <DragOverlayItem
+                      article={getActiveArticle(heroSortable.activeId)!}
+                      showImage
+                      getCategoryColor={getCategoryColor}
+                    />
+                  )}
+                </DragOverlay>
+              </DndContext>
             </div>
 
             {/* Add Article */}
@@ -289,11 +445,11 @@ const AdminFeatured = () => {
         </CardHeader>
         <CardContent>
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>• Drag articles to reorder their display priority</li>
+            <li>• <strong>Drag articles</strong> to reorder their display priority</li>
+            <li>• <strong>On mobile:</strong> Touch and hold, then drag to reorder</li>
             <li>• Breaking news appears in the red ticker at the top of the page</li>
             <li>• Hero articles are featured in the main carousel with large images</li>
             <li>• Changes will be reflected immediately after saving</li>
-            <li>• Articles with video content will show a play icon indicator</li>
           </ul>
         </CardContent>
       </Card>
