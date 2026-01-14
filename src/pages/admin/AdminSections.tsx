@@ -107,30 +107,31 @@ const AdminSections = () => {
       : availableArticles;
 
     return (
-      <Card className={!section.enabled ? 'opacity-60' : ''}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+      <Card className={`${!section.enabled ? 'opacity-60' : ''}`}>
+        <CardHeader className="pb-3 px-3 sm:px-6">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 text-primary flex-shrink-0">
                 {section.icon}
               </div>
-              <div>
-                <CardTitle className="text-base">{section.name}</CardTitle>
+              <div className="min-w-0">
+                <CardTitle className="text-sm sm:text-base truncate">{section.name}</CardTitle>
                 {section.category && (
-                  <Badge className={`${getCategoryColor(section.category)} text-white text-[10px] border-0 mt-1`}>
+                  <Badge className={`${getCategoryColor(section.category)} text-white text-[9px] sm:text-[10px] border-0 mt-1`}>
                     {section.category}
                   </Badge>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               <Button
                 variant="ghost"
                 size="icon"
+                className="h-7 w-7 sm:h-8 sm:w-8"
                 onClick={() => toggleHomepage(section.id)}
                 title={section.showOnHomepage ? 'Hide from homepage' : 'Show on homepage'}
               >
-                {section.showOnHomepage ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                {section.showOnHomepage ? <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <EyeOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
               </Button>
               <Switch
                 checked={section.enabled}
@@ -139,7 +140,7 @@ const AdminSections = () => {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-3 sm:px-6">
           {section.maxArticles > 0 && (
             <>
               <div>
@@ -211,29 +212,31 @@ const AdminSections = () => {
   };
 
   return (
-    <div>
+    <div className="px-1 sm:px-0">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">Homepage Sections</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Manage all homepage sections, content, and display order
+          <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">Homepage Sections</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">
+            Manage sections, content, and display order
           </p>
         </div>
-        <Button onClick={handleSave}>
+        <Button onClick={handleSave} size="sm" className="w-full sm:w-auto">
           <Save className="mr-2 h-4 w-4" /> Save All Changes
         </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="video-stories">Video Stories</TabsTrigger>
-          <TabsTrigger value="trending">Trending</TabsTrigger>
-          <TabsTrigger value="categories">Categories</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1 mb-6">
+          <TabsList className="inline-flex w-auto min-w-full sm:w-auto">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-3">Overview</TabsTrigger>
+            <TabsTrigger value="video-stories" className="text-xs sm:text-sm px-2 sm:px-3">Video</TabsTrigger>
+            <TabsTrigger value="trending" className="text-xs sm:text-sm px-2 sm:px-3">Trending</TabsTrigger>
+            <TabsTrigger value="categories" className="text-xs sm:text-sm px-2 sm:px-3">Categories</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
             {sections.map((section) => (
               <SectionCard key={section.id} section={section} />
             ))}

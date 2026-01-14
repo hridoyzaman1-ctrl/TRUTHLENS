@@ -59,15 +59,15 @@ const AdminFeatured = () => {
   };
 
   return (
-    <div>
+    <div className="px-1 sm:px-0">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">Featured Content Management</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Control which articles appear in breaking news ticker and hero section
+          <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">Featured Content</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">
+            Control breaking news ticker and hero section
           </p>
         </div>
-        <Button onClick={handleSave}>
+        <Button onClick={handleSave} size="sm" className="w-full sm:w-auto">
           <Save className="mr-2 h-4 w-4" /> Save Changes
         </Button>
       </div>
@@ -75,19 +75,19 @@ const AdminFeatured = () => {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Breaking News Section */}
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Newspaper className="h-5 w-5 text-primary" />
-                <CardTitle>Breaking News Ticker</CardTitle>
+          <CardHeader className="pb-3 px-3 sm:px-6">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Newspaper className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                <CardTitle className="text-sm sm:text-base truncate">Breaking News</CardTitle>
               </div>
-              <Badge variant="outline">{breakingNewsIds.length}/{settings.maxBreakingNews}</Badge>
+              <Badge variant="outline" className="text-xs flex-shrink-0">{breakingNewsIds.length}/{settings.maxBreakingNews}</Badge>
             </div>
-            <CardDescription>
-              Select articles to display in the breaking news ticker at the top of the page
+            <CardDescription className="text-xs sm:text-sm">
+              Articles for the breaking news ticker
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 px-3 sm:px-6">
             {/* Settings */}
             <div className="space-y-4 p-4 bg-muted rounded-lg">
               <div className="flex items-center justify-between">
@@ -130,23 +130,23 @@ const AdminFeatured = () => {
 
             {/* Selected Articles */}
             <div>
-              <Label className="text-sm font-medium">Selected Breaking News</Label>
+              <Label className="text-xs sm:text-sm font-medium">Selected Breaking News</Label>
               <div className="space-y-2 mt-2">
                 {breakingNewsIds.map((id, index) => {
                   const article = getArticleById(id);
                   if (!article) return null;
                   return (
-                    <div key={id} className="flex items-center gap-2 p-2 bg-card border border-border rounded-lg">
-                      <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
-                      <span className="text-xs font-bold text-muted-foreground w-6">{index + 1}</span>
+                    <div key={id} className="flex items-center gap-1.5 sm:gap-2 p-2 bg-card border border-border rounded-lg">
+                      <GripVertical className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground cursor-grab flex-shrink-0" />
+                      <span className="text-[10px] sm:text-xs font-bold text-muted-foreground w-4 sm:w-6 flex-shrink-0">{index + 1}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{article.title}</p>
-                        <Badge className={`${getCategoryColor(article.category)} text-white text-[10px] border-0`}>
+                        <p className="text-xs sm:text-sm font-medium truncate">{article.title}</p>
+                        <Badge className={`${getCategoryColor(article.category)} text-white text-[9px] sm:text-[10px] border-0`}>
                           {article.category}
                         </Badge>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => removeFromBreakingNews(id)}>
-                        <X className="h-4 w-4" />
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 flex-shrink-0" onClick={() => removeFromBreakingNews(id)}>
+                        <X className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                     </div>
                   );
@@ -179,19 +179,19 @@ const AdminFeatured = () => {
 
         {/* Hero Section */}
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Layout className="h-5 w-5 text-primary" />
-                <CardTitle>Hero Section</CardTitle>
+          <CardHeader className="pb-3 px-3 sm:px-6">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Layout className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                <CardTitle className="text-sm sm:text-base truncate">Hero Section</CardTitle>
               </div>
-              <Badge variant="outline">{heroFeaturedIds.length}/{settings.maxHeroArticles}</Badge>
+              <Badge variant="outline" className="text-xs flex-shrink-0">{heroFeaturedIds.length}/{settings.maxHeroArticles}</Badge>
             </div>
-            <CardDescription>
-              Select articles to display in the main hero carousel on the homepage
+            <CardDescription className="text-xs sm:text-sm">
+              Articles for the main hero carousel
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 px-3 sm:px-6">
             {/* Settings */}
             <div className="space-y-4 p-4 bg-muted rounded-lg">
               <div className="flex items-center justify-between">
@@ -221,33 +221,33 @@ const AdminFeatured = () => {
 
             {/* Selected Articles */}
             <div>
-              <Label className="text-sm font-medium">Featured Hero Articles</Label>
+              <Label className="text-xs sm:text-sm font-medium">Featured Hero Articles</Label>
               <div className="space-y-2 mt-2">
                 {heroFeaturedIds.map((id, index) => {
                   const article = getArticleById(id);
                   if (!article) return null;
                   return (
-                    <div key={id} className="flex items-center gap-2 p-2 bg-card border border-border rounded-lg">
-                      <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
-                      <span className="text-xs font-bold text-muted-foreground w-6">{index + 1}</span>
+                    <div key={id} className="flex items-center gap-1.5 sm:gap-2 p-2 bg-card border border-border rounded-lg">
+                      <GripVertical className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground cursor-grab flex-shrink-0" />
+                      <span className="text-[10px] sm:text-xs font-bold text-muted-foreground w-4 sm:w-6 flex-shrink-0">{index + 1}</span>
                       <img 
                         src={article.featuredImage} 
                         alt="" 
-                        className="w-12 h-8 object-cover rounded"
+                        className="w-10 h-7 sm:w-12 sm:h-8 object-cover rounded flex-shrink-0"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{article.title}</p>
-                        <div className="flex items-center gap-2">
-                          <Badge className={`${getCategoryColor(article.category)} text-white text-[10px] border-0`}>
+                        <p className="text-xs sm:text-sm font-medium truncate">{article.title}</p>
+                        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                          <Badge className={`${getCategoryColor(article.category)} text-white text-[9px] sm:text-[10px] border-0`}>
                             {article.category}
                           </Badge>
                           {article.hasVideo && (
-                            <Badge variant="outline" className="text-[10px]">Video</Badge>
+                            <Badge variant="outline" className="text-[9px] sm:text-[10px]">Video</Badge>
                           )}
                         </div>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => removeFromHeroFeatured(id)}>
-                        <X className="h-4 w-4" />
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 flex-shrink-0" onClick={() => removeFromHeroFeatured(id)}>
+                        <X className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                     </div>
                   );
