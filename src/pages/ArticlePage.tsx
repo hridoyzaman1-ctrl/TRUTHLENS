@@ -25,15 +25,18 @@ const ArticlePage = () => {
     );
   }
 
+  const isVideoHero = Boolean(article.hasVideo && article.videoUrl);
+  const articleContainerClass = `container mx-auto px-4 ${isVideoHero ? 'mt-6 md:mt-8' : '-mt-20'} relative z-10`;
+
   return (
     <Layout>
       {/* Hero Image or Video */}
-      <div className="relative h-64 md:h-96 lg:h-[500px]">
-        {article.hasVideo && article.videoUrl ? (
+      <div className="relative h-64 md:h-96 lg:h-[500px] bg-black overflow-hidden">
+        {isVideoHero ? (
           <iframe
             src={article.videoUrl}
             title={article.title}
-            className="h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
@@ -49,7 +52,7 @@ const ArticlePage = () => {
         )}
       </div>
 
-      <article className="container mx-auto px-4 -mt-20 relative z-10">
+      <article className={articleContainerClass}>
         <div className="max-w-4xl mx-auto">
           {/* Article Header */}
           <div className="bg-card rounded-xl p-6 md:p-8 shadow-lg">
