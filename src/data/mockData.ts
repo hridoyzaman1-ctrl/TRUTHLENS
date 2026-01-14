@@ -447,13 +447,13 @@ export const categories: { id: Category; name: string; description: string }[] =
 ];
 
 export const headerMenuItems: MenuItem[] = [
-  { id: '1', label: 'National', path: '/category/national', type: 'category', isVisible: true, order: 1 },
-  { id: '2', label: 'International', path: '/category/international', type: 'category', isVisible: true, order: 2 },
-  { id: '3', label: 'Economy', path: '/category/economy', type: 'category', isVisible: true, order: 3 },
-  { id: '4', label: 'Entertainment', path: '/category/entertainment', type: 'category', isVisible: true, order: 4 },
-  { id: '5', label: 'Sports', path: '/category/sports', type: 'category', isVisible: true, order: 5 },
-  { id: '6', label: 'Politics', path: '/category/politics', type: 'category', isVisible: true, order: 6 },
-  { id: '7', label: 'Technology', path: '/category/technology', type: 'category', isVisible: true, order: 7 },
-  { id: '8', label: 'Untold Stories', path: '/category/untold-stories', type: 'category', isVisible: true, order: 8, highlight: true },
-  { id: '9', label: 'Internship', path: '/internship', type: 'page', isVisible: true, order: 9, highlight: true, icon: '🎓' },
+  { id: '1', label: 'National', path: '/category/national', type: 'category', isVisible: true, order: 1, showInMainNav: true },
+  { id: '2', label: 'International', path: '/category/international', type: 'category', isVisible: true, order: 2, showInMainNav: true },
+  { id: '3', label: 'Economy', path: '/category/economy', type: 'category', isVisible: true, order: 3, showInMainNav: true },
+  { id: '4', label: 'Entertainment', path: '/category/entertainment', type: 'category', isVisible: true, order: 4, showInMainNav: true },
+  { id: '5', label: 'Sports', path: '/category/sports', type: 'category', isVisible: true, order: 5, showInMainNav: true },
+  { id: '6', label: 'Politics', path: '/category/politics', type: 'category', isVisible: true, order: 6, showInMainNav: false },
+  { id: '7', label: 'Technology', path: '/category/technology', type: 'category', isVisible: true, order: 7, showInMainNav: false },
+  { id: '8', label: 'Untold Stories', path: '/category/untold-stories', type: 'category', isVisible: true, order: 8, highlight: true, showInMainNav: false },
+  { id: '9', label: 'Internship', path: '/internship', type: 'page', isVisible: true, order: 9, highlight: true, icon: '🎓', showInMainNav: false },
 ];
