@@ -4,8 +4,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Mail, MapPin, Phone, Send } from 'lucide-react';
+import { contactInfoData } from '@/data/siteContactData';
 
 const ContactPage = () => {
+  const contacts = contactInfoData.filter(c => c.isVisible && c.showOnContactPage).sort((a, b) => a.order - b.order);
+  
+  const emailContacts = contacts.filter(c => c.type === 'email');
+  const phoneContacts = contacts.filter(c => c.type === 'phone');
+  const addressContacts = contacts.filter(c => c.type === 'address');
+
   return (
     <Layout>
       {/* Hero */}
@@ -24,46 +31,77 @@ const ContactPage = () => {
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Contact Info */}
           <div className="space-y-6">
-            <div className="rounded-xl bg-card p-6 border border-border">
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Mail className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">Email</h3>
-                  <p className="text-sm text-muted-foreground">contact@truthlens.com</p>
-                  <p className="text-sm text-muted-foreground">press@truthlens.com</p>
+            {/* Email Contacts */}
+            {emailContacts.length > 0 && (
+              <div className="rounded-xl bg-card p-6 border border-border">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <Mail className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Email</h3>
+                    {emailContacts.map((contact) => (
+                      <div key={contact.id} className="mt-1">
+                        <p className="text-xs text-muted-foreground/70">{contact.label}</p>
+                        <a 
+                          href={`mailto:${contact.value}`}
+                          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {contact.value}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            <div className="rounded-xl bg-card p-6 border border-border">
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Phone className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">Phone</h3>
-                  <p className="text-sm text-muted-foreground">+1 (555) 123-4567</p>
+            {/* Phone Contacts */}
+            {phoneContacts.length > 0 && (
+              <div className="rounded-xl bg-card p-6 border border-border">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <Phone className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Phone</h3>
+                    {phoneContacts.map((contact) => (
+                      <div key={contact.id} className="mt-1">
+                        <p className="text-xs text-muted-foreground/70">{contact.label}</p>
+                        <a 
+                          href={`tel:${contact.value.replace(/\D/g, '')}`}
+                          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {contact.value}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            <div className="rounded-xl bg-card p-6 border border-border">
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <MapPin className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">Address</h3>
-                  <p className="text-sm text-muted-foreground">
-                    123 News Street<br />
-                    Media City, MC 12345<br />
-                    United States
-                  </p>
+            {/* Address Contacts */}
+            {addressContacts.length > 0 && (
+              <div className="rounded-xl bg-card p-6 border border-border">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <MapPin className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Address</h3>
+                    {addressContacts.map((contact) => (
+                      <div key={contact.id} className="mt-1">
+                        <p className="text-xs text-muted-foreground/70">{contact.label}</p>
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">
+                          {contact.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Contact Form */}

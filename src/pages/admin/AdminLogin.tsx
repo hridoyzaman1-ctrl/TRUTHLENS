@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { useRateLimiter } from '@/hooks/useRateLimiter';
 import truthLensLogo from '@/assets/truthlens-logo.png';
 
 // Validation schemas
@@ -79,6 +80,13 @@ const AdminLogin = () => {
   const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState<{ email?: string; password?: string }>({});
   const [viewMode, setViewMode] = useState<ViewMode>('login');
+  
+  // Rate limiting - 5 attempts in 15 minutes, then 30 min lockout
+  const rateLimiter = useRateLimiter({
+    maxAttempts: 5,
+    windowMs: 15 * 60 * 1000,
+    lockoutMs: 30 * 60 * 1000,
+  });
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -113,6 +121,12 @@ const AdminLogin = () => {
     e.preventDefault();
     setError('');
 
+    // Check rate limiting
+    if (rateLimiter.isLocked) {
+      setError(`Too many failed attempts. Please try again in ${rateLimiter.formatRemainingTime()}.`);
+      return;
+    }
+
     if (!validateForm()) return;
 
     setIsLoading(true);
@@ -124,6 +138,9 @@ const AdminLogin = () => {
     // When connected to Cloud, this will use supabase.auth.signInWithPassword
     // and verify against a user_roles table for admin access
     if (email === MOCK_ADMIN_CREDENTIALS.email && password === MOCK_ADMIN_CREDENTIALS.password) {
+      // Record successful attempt (resets rate limiter)
+      rateLimiter.recordAttempt(true);
+      
       // Create mock session
       const session = {
         user: {
@@ -149,7 +166,14 @@ const AdminLogin = () => {
       const from = (location.state as { from?: string })?.from || '/admin';
       navigate(from, { replace: true });
     } else {
-      setError('Invalid email or password. Please try again.');
+      // Record failed attempt
+      rateLimiter.recordAttempt(false);
+      
+      if (rateLimiter.attemptsRemaining <= 1) {
+        setError(`Invalid credentials. ${rateLimiter.attemptsRemaining} attempt${rateLimiter.attemptsRemaining === 1 ? '' : 's'} remaining before lockout.`);
+      } else {
+        setError('Invalid email or password. Please try again.');
+      }
     }
 
     setIsLoading(false);
@@ -239,7 +263,18 @@ const AdminLogin = () => {
                   onSubmit={handleLogin}
                   className="space-y-4"
                 >
-                  {error && (
+                  {rateLimiter.isLocked && (
+                    <Alert variant="destructive" className="border-orange-500/50 bg-orange-500/10">
+                      <Clock className="h-4 w-4 text-orange-500" />
+                      <AlertDescription className="text-orange-600">
+                        Account temporarily locked due to too many failed attempts.
+                        <br />
+                        <span className="font-mono font-bold">{rateLimiter.formatRemainingTime()}</span> remaining
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {error && !rateLimiter.isLocked && (
                     <Alert variant="destructive">
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription>{error}</AlertDescription>
@@ -328,12 +363,17 @@ const AdminLogin = () => {
                     type="submit" 
                     className="w-full" 
                     size="lg"
-                    disabled={isLoading}
+                    disabled={isLoading || rateLimiter.isLocked}
                   >
                     {isLoading ? (
                       <span className="flex items-center gap-2">
                         <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
                         Signing in...
+                      </span>
+                    ) : rateLimiter.isLocked ? (
+                      <span className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Locked ({rateLimiter.formatRemainingTime()})
                       </span>
                     ) : (
                       'Sign In'

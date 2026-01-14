@@ -1,11 +1,22 @@
 import { Link } from 'react-router-dom';
-import { Facebook, Twitter, Instagram, Youtube, Linkedin, MessageCircle, Send, Mail, Share2 } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Youtube, Linkedin, MessageCircle, Send, Mail, Share2, Phone, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { socialMediaLinks, siteSettings } from '@/data/mockData';
+import { contactInfoData } from '@/data/siteContactData';
 import logo from '@/assets/truthlens-logo.png';
 
 export const Footer = () => {
   const visibleSocialLinks = socialMediaLinks.filter(link => link.isVisible && link.url);
+  const footerContacts = contactInfoData.filter(c => c.isVisible && c.showInFooter).sort((a, b) => a.order - b.order);
+
+  const getContactIcon = (type: string) => {
+    switch (type) {
+      case 'email': return <Mail className="mt-0.5 h-4 w-4 flex-shrink-0" />;
+      case 'phone': return <Phone className="mt-0.5 h-4 w-4 flex-shrink-0" />;
+      case 'address': return <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />;
+      default: return <Mail className="mt-0.5 h-4 w-4 flex-shrink-0" />;
+    }
+  };
 
   const getSocialIcon = (platform: string) => {
     const iconProps = { className: "h-5 w-5" };
@@ -119,10 +130,29 @@ export const Footer = () => {
           <div>
             <h4 className="font-display text-lg font-semibold text-foreground">Connect With Us</h4>
             <ul className="mt-4 space-y-3">
-              <li className="flex items-start gap-2 text-sm text-muted-foreground">
-                <Mail className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                <span>{siteSettings.contactEmail}</span>
-              </li>
+              {footerContacts.length > 0 ? (
+                footerContacts.map((contact) => (
+                  <li key={contact.id} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    {getContactIcon(contact.type)}
+                    {contact.type === 'email' ? (
+                      <a href={`mailto:${contact.value}`} className="hover:text-foreground transition-colors">
+                        {contact.value}
+                      </a>
+                    ) : contact.type === 'phone' ? (
+                      <a href={`tel:${contact.value.replace(/\D/g, '')}`} className="hover:text-foreground transition-colors">
+                        {contact.value}
+                      </a>
+                    ) : (
+                      <span className="whitespace-pre-line">{contact.value}</span>
+                    )}
+                  </li>
+                ))
+              ) : (
+                <li className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <Mail className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <span>{siteSettings.contactEmail}</span>
+                </li>
+              )}
             </ul>
             
             {/* Social Links as Buttons */}

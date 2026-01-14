@@ -30,6 +30,7 @@ import AdminEditorial from "./pages/admin/AdminEditorial";
 import AdminSections from "./pages/admin/AdminSections";
 import AdminMenu from "./pages/admin/AdminMenu";
 import AdminComments from "./pages/admin/AdminComments";
+import AdminContactInfo from "./pages/admin/AdminContactInfo";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="editorial" element={<AdminEditorial />} />
               <Route path="articles" element={<AdminArticles />} />
               <Route path="comments" element={<AdminComments />} />
+              <Route path="contact-info" element={<AdminContactInfo />} />
               <Route path="categories" element={<AdminCategories />} />
               <Route path="media" element={<AdminMedia />} />
               <Route path="users" element={<AdminUsers />} />
