@@ -11,7 +11,29 @@ export type Category =
   | 'sports'
   | 'entertainment';
 
-export type UserRole = 'admin' | 'editor' | 'reporter';
+export type UserRole = 'admin' | 'editor' | 'journalist' | 'author' | 'reporter';
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  role: UserRole;
+  isActive: boolean;
+  permissions: string[];
+  createdAt: Date;
+  lastLogin?: Date;
+}
+
+export interface FeaturedSettings {
+  breakingNewsIds: string[];
+  heroFeaturedIds: string[];
+  maxBreakingNews: number;
+  maxHeroArticles: number;
+  autoSwipeInterval: number;
+  breakingAutoSwipe: boolean;
+  heroAutoSwipe: boolean;
+}
 
 export interface Article {
   id: string;
