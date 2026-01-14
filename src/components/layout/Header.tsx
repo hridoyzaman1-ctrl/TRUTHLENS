@@ -102,8 +102,18 @@ export const Header = () => {
             {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
 
-          {/* Logo - Larger sizing */}
-          <Link to="/" className="flex items-center">
+          {/* Logo - Larger sizing with scroll to top */}
+          <Link 
+            to="/" 
+            className="flex items-center"
+            onClick={(e) => {
+              // If already on homepage, scroll to top
+              if (window.location.pathname === '/') {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
+          >
             <img 
               src={logo} 
               alt="TruthLens" 

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, Save, FolderOpen } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, FolderOpen, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Category } from '@/types/news';
+import { useAdminAuth } from '@/context/AdminAuthContext';
 
 interface CategoryItem {
   id: Category;
@@ -22,6 +23,7 @@ interface CategoryItem {
 }
 
 const AdminCategories = () => {
+  const { hasPermission } = useAdminAuth();
   const [categoriesList, setCategoriesList] = useState<CategoryItem[]>(initialCategories);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
@@ -30,6 +32,21 @@ const AdminCategories = () => {
     name: '',
     description: ''
   });
+
+  const canManageCategories = hasPermission('manageCategories');
+
+  // If user doesn't have permission, show restricted view
+  if (!canManageCategories) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Lock className="h-16 w-16 text-muted-foreground mb-4" />
+        <h1 className="font-display text-2xl font-bold text-foreground mb-2">Access Restricted</h1>
+        <p className="text-muted-foreground max-w-md">
+          You don't have permission to manage categories. Only administrators can access this section.
+        </p>
+      </div>
+    );
+  }
 
   const openCreateDialog = () => {
     setEditingCategory(null);

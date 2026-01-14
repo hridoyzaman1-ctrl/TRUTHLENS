@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Save, Plus, Trash2, Mail, Phone, MapPin, Eye, EyeOff, Building, FileText } from 'lucide-react';
+import { Save, Plus, Trash2, Mail, Phone, MapPin, Eye, EyeOff, Building, FileText, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -12,14 +12,31 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { contactInfoData as initialContacts, aboutInfoData as initialAbout, ContactInfo, AboutInfo } from '@/data/siteContactData';
 import { toast } from 'sonner';
+import { useAdminAuth } from '@/context/AdminAuthContext';
 
 const AdminContactInfo = () => {
+  const { hasPermission } = useAdminAuth();
   const [contacts, setContacts] = useState<ContactInfo[]>(initialContacts);
   const [aboutInfo, setAboutInfo] = useState<AboutInfo[]>(initialAbout);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [isAddAboutOpen, setIsAddAboutOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<ContactInfo | null>(null);
   const [editingAbout, setEditingAbout] = useState<AboutInfo | null>(null);
+
+  const canManageContactInfo = hasPermission('manageContactInfo');
+
+  // If user doesn't have permission, show restricted view
+  if (!canManageContactInfo) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Lock className="h-16 w-16 text-muted-foreground mb-4" />
+        <h1 className="font-display text-2xl font-bold text-foreground mb-2">Access Restricted</h1>
+        <p className="text-muted-foreground max-w-md">
+          You don't have permission to manage contact information. Only administrators can access this section.
+        </p>
+      </div>
+    );
+  }
 
   const [newContact, setNewContact] = useState<Partial<ContactInfo>>({
     type: 'email',

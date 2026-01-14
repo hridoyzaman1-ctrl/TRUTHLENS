@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Save, Globe, Bell, Shield, Share2, Facebook, Twitter, Instagram, Youtube, Linkedin, MessageCircle, Send, ExternalLink } from 'lucide-react';
+import { Save, Globe, Bell, Shield, Share2, Facebook, Twitter, Instagram, Youtube, Linkedin, MessageCircle, Send, ExternalLink, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Select,
@@ -17,8 +17,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { socialMediaLinks as initialSocialLinks, siteSettings as initialSiteSettings } from '@/data/mockData';
 import { SocialMediaLink } from '@/types/news';
+import { useAdminAuth } from '@/context/AdminAuthContext';
 
 const AdminSettings = () => {
+  const { hasPermission } = useAdminAuth();
   const [socialLinks, setSocialLinks] = useState<SocialMediaLink[]>(initialSocialLinks);
   const [settings, setSettings] = useState({
     siteName: initialSiteSettings.siteName,
@@ -34,6 +36,21 @@ const AdminSettings = () => {
     dateFormat: 'MMM d, yyyy',
     maintenanceMode: false
   });
+
+  const canManageSettings = hasPermission('manageSettings');
+
+  // If user doesn't have permission, show restricted view
+  if (!canManageSettings) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Lock className="h-16 w-16 text-muted-foreground mb-4" />
+        <h1 className="font-display text-2xl font-bold text-foreground mb-2">Access Restricted</h1>
+        <p className="text-muted-foreground max-w-md">
+          You don't have permission to manage site settings. Only administrators can access this section.
+        </p>
+      </div>
+    );
+  }
 
   const handleSave = () => {
     toast.success('Settings saved successfully!');

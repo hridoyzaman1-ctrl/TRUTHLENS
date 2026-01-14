@@ -11,8 +11,10 @@ import {
   Calendar,
   ThumbsUp,
   ExternalLink,
-  Filter
+  Filter,
+  Lock
 } from 'lucide-react';
+import { useAdminAuth } from '@/context/AdminAuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -179,11 +181,28 @@ const initialComments: Comment[] = [
 ];
 
 const AdminComments = () => {
+  const { hasPermission } = useAdminAuth();
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+
+  const canViewComments = hasPermission('viewAllComments');
+  const canModerateComments = hasPermission('moderateComments');
+
+  // If user doesn't have permission, show restricted view
+  if (!canViewComments) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Lock className="h-16 w-16 text-muted-foreground mb-4" />
+        <h1 className="font-display text-2xl font-bold text-foreground mb-2">Access Restricted</h1>
+        <p className="text-muted-foreground max-w-md">
+          You don't have permission to view all comments. Only editors and administrators can access this section.
+        </p>
+      </div>
+    );
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -419,7 +438,7 @@ const AdminComments = () => {
                           <Eye className="h-4 w-4" />
                         </Button>
                         
-                        {comment.status !== 'approved' && (
+                        {canModerateComments && comment.status !== 'approved' && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -430,7 +449,7 @@ const AdminComments = () => {
                           </Button>
                         )}
                         
-                        {comment.status !== 'flagged' && comment.status !== 'spam' && (
+                        {canModerateComments && comment.status !== 'flagged' && comment.status !== 'spam' && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -441,7 +460,7 @@ const AdminComments = () => {
                           </Button>
                         )}
                         
-                        {comment.status !== 'spam' && (
+                        {canModerateComments && comment.status !== 'spam' && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -452,34 +471,36 @@ const AdminComments = () => {
                           </Button>
                         )}
 
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="bg-background">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete comment?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete this comment by {comment.author}. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => handleDelete(comment.id)}
-                                className="bg-destructive text-destructive-foreground"
+                        {canModerateComments && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-background">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete comment?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete this comment by {comment.author}. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleDelete(comment.id)}
+                                  className="bg-destructive text-destructive-foreground"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
