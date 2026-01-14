@@ -108,3 +108,18 @@ export interface NewsletterSubscriber {
   subscribedAt: Date;
   isActive: boolean;
 }
+
+export interface SocialMediaLink {
+  id: string;
+  platform: 'facebook' | 'twitter' | 'instagram' | 'youtube' | 'linkedin' | 'tiktok' | 'whatsapp' | 'telegram';
+  url: string;
+  isVisible: boolean;
+}
+
+export interface SiteSettings {
+  siteName: string;
+  tagline: string;
+  siteDescription: string;
+  contactEmail: string;
+  socialLinks: SocialMediaLink[];
+}
