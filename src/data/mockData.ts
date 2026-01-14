@@ -1,4 +1,4 @@
-import { Article, Author, Job, Category, MenuItem } from '@/types/news';
+import { Article, Author, Job, Category, MenuItem, SocialMediaLink, SiteSettings } from '@/types/news';
 
 export const authors: Author[] = [
   {
@@ -457,3 +457,22 @@ export const headerMenuItems: MenuItem[] = [
   { id: '8', label: 'Untold Stories', path: '/category/untold-stories', type: 'category', isVisible: true, order: 8, highlight: true, showInMainNav: false },
   { id: '9', label: 'Internship', path: '/internship', type: 'page', isVisible: true, order: 9, highlight: true, icon: '🎓', showInMainNav: false },
 ];
+
+export const socialMediaLinks: SocialMediaLink[] = [
+  { id: '1', platform: 'facebook', url: 'https://facebook.com/truthlens', isVisible: true },
+  { id: '2', platform: 'twitter', url: 'https://twitter.com/truthlens', isVisible: true },
+  { id: '3', platform: 'instagram', url: 'https://instagram.com/truthlens', isVisible: true },
+  { id: '4', platform: 'youtube', url: 'https://youtube.com/@truthlens', isVisible: true },
+  { id: '5', platform: 'linkedin', url: 'https://linkedin.com/company/truthlens', isVisible: true },
+  { id: '6', platform: 'tiktok', url: '', isVisible: false },
+  { id: '7', platform: 'whatsapp', url: '', isVisible: false },
+  { id: '8', platform: 'telegram', url: '', isVisible: false },
+];
+
+export const siteSettings: SiteSettings = {
+  siteName: 'TruthLens',
+  tagline: 'Authentic Stories. Unbiased Voices.',
+  siteDescription: 'Your trusted source for fact-based journalism.',
+  contactEmail: 'contact@truthlens.com',
+  socialLinks: socialMediaLinks,
+};

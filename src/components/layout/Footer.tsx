@@ -1,9 +1,41 @@
 import { Link } from 'react-router-dom';
-import { Facebook, Twitter, Instagram, Youtube, Mail } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Youtube, Linkedin, MessageCircle, Send, Mail, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { socialMediaLinks, siteSettings } from '@/data/mockData';
 import logo from '@/assets/truthlens-logo.png';
 
 export const Footer = () => {
+  const visibleSocialLinks = socialMediaLinks.filter(link => link.isVisible && link.url);
+
+  const getSocialIcon = (platform: string) => {
+    const iconProps = { className: "h-5 w-5" };
+    switch (platform) {
+      case 'facebook': return <Facebook {...iconProps} />;
+      case 'twitter': return <Twitter {...iconProps} />;
+      case 'instagram': return <Instagram {...iconProps} />;
+      case 'youtube': return <Youtube {...iconProps} />;
+      case 'linkedin': return <Linkedin {...iconProps} />;
+      case 'tiktok': return <span className="text-base">📱</span>;
+      case 'whatsapp': return <MessageCircle {...iconProps} />;
+      case 'telegram': return <Send {...iconProps} />;
+      default: return <Share2 {...iconProps} />;
+    }
+  };
+
+  const getPlatformName = (platform: string) => {
+    const names: Record<string, string> = {
+      facebook: 'Facebook',
+      twitter: 'X (Twitter)',
+      instagram: 'Instagram',
+      youtube: 'YouTube',
+      linkedin: 'LinkedIn',
+      tiktok: 'TikTok',
+      whatsapp: 'WhatsApp',
+      telegram: 'Telegram',
+    };
+    return names[platform] || platform;
+  };
+
   return (
     <footer className="border-t border-border bg-card">
       {/* Newsletter Section */}
@@ -34,25 +66,28 @@ export const Footer = () => {
           {/* Brand */}
           <div>
             <Link to="/" className="flex items-center">
-              <img src={logo} alt="TruthLens" className="h-10 w-auto object-contain" />
+              <img src={logo} alt={siteSettings.siteName} className="h-10 w-auto object-contain" />
             </Link>
             <p className="mt-4 text-sm text-muted-foreground">
-              Authentic Stories. Unbiased Voices. Your trusted source for fact-based journalism.
+              {siteSettings.tagline} {siteSettings.siteDescription}
             </p>
-            <div className="mt-6 flex gap-4">
-              <a href="#" className="text-muted-foreground transition-colors hover:text-primary">
-                <Facebook className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-muted-foreground transition-colors hover:text-primary">
-                <Twitter className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-muted-foreground transition-colors hover:text-primary">
-                <Instagram className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-muted-foreground transition-colors hover:text-primary">
-                <Youtube className="h-5 w-5" />
-              </a>
-            </div>
+            {visibleSocialLinks.length > 0 && (
+              <div className="mt-6 flex flex-wrap gap-3">
+                {visibleSocialLinks.map((link) => (
+                  <a 
+                    key={link.id}
+                    href={link.url} 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground transition-colors hover:text-primary"
+                    title={getPlatformName(link.platform)}
+                    aria-label={`Follow us on ${getPlatformName(link.platform)}`}
+                  >
+                    {getSocialIcon(link.platform)}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Categories */}
@@ -62,7 +97,7 @@ export const Footer = () => {
               <li><Link to="/category/national" className="text-sm text-muted-foreground hover:text-foreground">National</Link></li>
               <li><Link to="/category/international" className="text-sm text-muted-foreground hover:text-foreground">International</Link></li>
               <li><Link to="/category/economy" className="text-sm text-muted-foreground hover:text-foreground">Economy</Link></li>
-              <li><Link to="/category/environment" className="text-sm text-muted-foreground hover:text-foreground">Environment</Link></li>
+              <li><Link to="/category/sports" className="text-sm text-muted-foreground hover:text-foreground">Sports</Link></li>
               <li><Link to="/category/technology" className="text-sm text-muted-foreground hover:text-foreground">Technology</Link></li>
               <li><Link to="/category/untold-stories" className="text-sm font-medium text-accent hover:text-accent/80">Untold Stories</Link></li>
             </ul>
@@ -80,16 +115,35 @@ export const Footer = () => {
             </ul>
           </div>
 
-          {/* Contact */}
+          {/* Contact & Social */}
           <div>
-            <h4 className="font-display text-lg font-semibold text-foreground">Contact</h4>
+            <h4 className="font-display text-lg font-semibold text-foreground">Connect With Us</h4>
             <ul className="mt-4 space-y-3">
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
                 <Mail className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                <span>contact@truthlens.com</span>
+                <span>{siteSettings.contactEmail}</span>
               </li>
             </ul>
-            <div className="mt-6">
+            
+            {/* Social Links as Buttons */}
+            {visibleSocialLinks.length > 0 && (
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {visibleSocialLinks.slice(0, 4).map((link) => (
+                  <a
+                    key={link.id}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors"
+                  >
+                    {getSocialIcon(link.platform)}
+                    <span className="truncate">{getPlatformName(link.platform)}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-4">
               <Link to="/contact">
                 <Button variant="outline" className="w-full">
                   Get in Touch
@@ -104,7 +158,7 @@ export const Footer = () => {
       <div className="border-t border-border">
         <div className="container mx-auto flex flex-col items-center justify-between gap-4 px-4 py-6 sm:flex-row">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} TruthLens. All rights reserved.
+            © {new Date().getFullYear()} {siteSettings.siteName}. All rights reserved.
           </p>
           <p className="text-sm text-muted-foreground">
             Built with integrity. Powered by truth.
