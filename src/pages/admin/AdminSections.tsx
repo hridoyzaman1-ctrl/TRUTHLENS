@@ -6,11 +6,23 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { articles, categories } from '@/data/mockData';
+import { articles } from '@/data/mockData';
 import { toast } from 'sonner';
+import {
+  DndContext,
+  closestCenter,
+  DragOverlay,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useTouchSortable } from '@/hooks/useTouchSortable';
+import { cn } from '@/lib/utils';
 
 interface SectionConfig {
   id: string;
@@ -37,6 +49,175 @@ const defaultSections: SectionConfig[] = [
   { id: 'entertainment', name: 'Entertainment', icon: <Film className="h-4 w-4" />, enabled: true, order: 10, maxArticles: 4, selectedArticleIds: [], showOnHomepage: true, category: 'entertainment' },
   { id: 'editorial', name: 'Editorial & Opinion', icon: <Pen className="h-4 w-4" />, enabled: true, order: 11, maxArticles: 4, selectedArticleIds: [], showOnHomepage: true, category: 'editorial' },
 ];
+
+// Draggable Section Card Component
+const DraggableSectionCard = ({ section, onToggle, onToggleHomepage, onUpdateMaxArticles, onAddArticle, onRemoveArticle, availableArticles, getCategoryColor }: {
+  section: SectionConfig;
+  onToggle: () => void;
+  onToggleHomepage: () => void;
+  onUpdateMaxArticles: (max: number) => void;
+  onAddArticle: (articleId: string) => void;
+  onRemoveArticle: (articleId: string) => void;
+  availableArticles: typeof articles;
+  getCategoryColor: (category: string) => string;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: section.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const sectionArticles = section.category 
+    ? availableArticles.filter(a => a.category === section.category)
+    : availableArticles;
+
+  return (
+    <Card 
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'touch-manipulation',
+        !section.enabled && 'opacity-60',
+        isDragging && 'z-50 opacity-90 shadow-xl scale-[1.02]'
+      )}
+    >
+      <CardHeader className="pb-3 px-3 sm:px-6">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              type="button"
+              className={cn(
+                'flex-shrink-0 p-1.5 rounded cursor-grab active:cursor-grabbing touch-manipulation',
+                'hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary',
+                isDragging && 'cursor-grabbing'
+              )}
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 text-primary flex-shrink-0">
+              {section.icon}
+            </div>
+            <div className="min-w-0">
+              <CardTitle className="text-sm sm:text-base truncate">{section.name}</CardTitle>
+              {section.category && (
+                <Badge className={`${getCategoryColor(section.category)} text-white text-[9px] sm:text-[10px] border-0 mt-1`}>
+                  {section.category}
+                </Badge>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 sm:h-8 sm:w-8"
+              onClick={onToggleHomepage}
+              title={section.showOnHomepage ? 'Hide from homepage' : 'Show on homepage'}
+            >
+              {section.showOnHomepage ? <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <EyeOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+            </Button>
+            <Switch
+              checked={section.enabled}
+              onCheckedChange={onToggle}
+            />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 px-3 sm:px-6">
+        {section.maxArticles > 0 && (
+          <>
+            <div>
+              <Label className="text-xs text-muted-foreground">
+                Max Articles: {section.maxArticles}
+              </Label>
+              <Slider
+                value={[section.maxArticles]}
+                onValueChange={([v]) => onUpdateMaxArticles(v)}
+                min={1}
+                max={10}
+                step={1}
+                className="mt-2"
+                disabled={!section.enabled}
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium">
+                Selected Articles ({section.selectedArticleIds.length}/{section.maxArticles})
+              </Label>
+              <div className="space-y-1 mt-2 max-h-40 overflow-y-auto">
+                {section.selectedArticleIds.map((id) => {
+                  const article = availableArticles.find(a => a.id === id);
+                  if (!article) return null;
+                  return (
+                    <div key={id} className="flex items-center gap-2 p-2 bg-muted rounded text-sm">
+                      <span className="flex-1 truncate">{article.title}</span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 w-6 p-0"
+                        onClick={() => onRemoveArticle(id)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {section.selectedArticleIds.length < section.maxArticles && section.enabled && (
+              <Select onValueChange={onAddArticle}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Add article..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sectionArticles
+                    .filter(a => !section.selectedArticleIds.includes(a.id))
+                    .slice(0, 20)
+                    .map((article) => (
+                      <SelectItem key={article.id} value={article.id}>
+                        <span className="truncate">{article.title}</span>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            )}
+          </>
+        )}
+
+        {section.maxArticles === 0 && (
+          <p className="text-xs text-muted-foreground">This section displays static content</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// Drag Overlay for Sections
+const SectionDragOverlay = ({ section }: { section: SectionConfig }) => (
+  <Card className="opacity-95 shadow-2xl border-2 border-primary">
+    <CardHeader className="pb-3 px-3 sm:px-6">
+      <div className="flex items-center gap-2">
+        <GripVertical className="h-4 w-4 text-primary flex-shrink-0" />
+        <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 text-primary flex-shrink-0">
+          {section.icon}
+        </div>
+        <CardTitle className="text-sm sm:text-base truncate">{section.name}</CardTitle>
+      </div>
+    </CardHeader>
+  </Card>
+);
 
 const AdminSections = () => {
   const [sections, setSections] = useState<SectionConfig[]>(defaultSections);
@@ -101,114 +282,23 @@ const AdminSections = () => {
     toast.success('All section settings saved successfully!');
   };
 
-  const SectionCard = ({ section }: { section: SectionConfig }) => {
-    const sectionArticles = section.category 
-      ? availableArticles.filter(a => a.category === section.category)
-      : availableArticles;
+  // Drag-and-drop for sections reordering
+  const sectionsSortable = useTouchSortable({
+    items: sections,
+    getItemId: (section) => section.id,
+    onReorder: (newSections) => {
+      const reorderedSections = newSections.map((s, index) => ({
+        ...s,
+        order: index + 1
+      }));
+      setSections(reorderedSections);
+      toast.success('Section order updated');
+    },
+  });
 
-    return (
-      <Card className={`${!section.enabled ? 'opacity-60' : ''}`}>
-        <CardHeader className="pb-3 px-3 sm:px-6">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 text-primary flex-shrink-0">
-                {section.icon}
-              </div>
-              <div className="min-w-0">
-                <CardTitle className="text-sm sm:text-base truncate">{section.name}</CardTitle>
-                {section.category && (
-                  <Badge className={`${getCategoryColor(section.category)} text-white text-[9px] sm:text-[10px] border-0 mt-1`}>
-                    {section.category}
-                  </Badge>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 sm:h-8 sm:w-8"
-                onClick={() => toggleHomepage(section.id)}
-                title={section.showOnHomepage ? 'Hide from homepage' : 'Show on homepage'}
-              >
-                {section.showOnHomepage ? <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <EyeOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
-              </Button>
-              <Switch
-                checked={section.enabled}
-                onCheckedChange={() => toggleSection(section.id)}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4 px-3 sm:px-6">
-          {section.maxArticles > 0 && (
-            <>
-              <div>
-                <Label className="text-xs text-muted-foreground">
-                  Max Articles: {section.maxArticles}
-                </Label>
-                <Slider
-                  value={[section.maxArticles]}
-                  onValueChange={([v]) => updateMaxArticles(section.id, v)}
-                  min={1}
-                  max={10}
-                  step={1}
-                  className="mt-2"
-                  disabled={!section.enabled}
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs font-medium">
-                  Selected Articles ({section.selectedArticleIds.length}/{section.maxArticles})
-                </Label>
-                <div className="space-y-1 mt-2 max-h-40 overflow-y-auto">
-                  {section.selectedArticleIds.map((id) => {
-                    const article = availableArticles.find(a => a.id === id);
-                    if (!article) return null;
-                    return (
-                      <div key={id} className="flex items-center gap-2 p-2 bg-muted rounded text-sm">
-                        <span className="flex-1 truncate">{article.title}</span>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-6 w-6 p-0"
-                          onClick={() => removeArticleFromSection(section.id, id)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {section.selectedArticleIds.length < section.maxArticles && section.enabled && (
-                <Select onValueChange={(id) => addArticleToSection(section.id, id)}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Add article..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sectionArticles
-                      .filter(a => !section.selectedArticleIds.includes(a.id))
-                      .slice(0, 20)
-                      .map((article) => (
-                        <SelectItem key={article.id} value={article.id}>
-                          <span className="truncate">{article.title}</span>
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </>
-          )}
-
-          {section.maxArticles === 0 && (
-            <p className="text-xs text-muted-foreground">This section displays static content</p>
-          )}
-        </CardContent>
-      </Card>
-    );
+  const getActiveSection = () => {
+    if (!sectionsSortable.activeId) return null;
+    return sections.find(s => s.id === sectionsSortable.activeId);
   };
 
   return (
@@ -217,7 +307,7 @@ const AdminSections = () => {
         <div>
           <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">Homepage Sections</h1>
           <p className="text-muted-foreground text-xs sm:text-sm mt-1">
-            Manage sections, content, and display order
+            Drag sections to reorder • Touch and hold on mobile
           </p>
         </div>
         <Button onClick={handleSave} size="sm" className="w-full sm:w-auto">
@@ -236,11 +326,36 @@ const AdminSections = () => {
         </div>
 
         <TabsContent value="overview">
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-            {sections.map((section) => (
-              <SectionCard key={section.id} section={section} />
-            ))}
-          </div>
+          <DndContext
+            sensors={sectionsSortable.sensors}
+            collisionDetection={closestCenter}
+            onDragStart={sectionsSortable.handleDragStart}
+            onDragEnd={sectionsSortable.handleDragEnd}
+            onDragCancel={sectionsSortable.handleDragCancel}
+          >
+            <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                {sections.map((section) => (
+                  <DraggableSectionCard
+                    key={section.id}
+                    section={section}
+                    onToggle={() => toggleSection(section.id)}
+                    onToggleHomepage={() => toggleHomepage(section.id)}
+                    onUpdateMaxArticles={(max) => updateMaxArticles(section.id, max)}
+                    onAddArticle={(articleId) => addArticleToSection(section.id, articleId)}
+                    onRemoveArticle={(articleId) => removeArticleFromSection(section.id, articleId)}
+                    availableArticles={availableArticles}
+                    getCategoryColor={getCategoryColor}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+            <DragOverlay>
+              {getActiveSection() && (
+                <SectionDragOverlay section={getActiveSection()!} />
+              )}
+            </DragOverlay>
+          </DndContext>
         </TabsContent>
 
         <TabsContent value="video-stories">
@@ -357,7 +472,17 @@ const AdminSections = () => {
         <TabsContent value="categories">
           <div className="grid gap-4 md:grid-cols-2">
             {sections.filter(s => s.category).map((section) => (
-              <SectionCard key={section.id} section={section} />
+              <DraggableSectionCard
+                key={section.id}
+                section={section}
+                onToggle={() => toggleSection(section.id)}
+                onToggleHomepage={() => toggleHomepage(section.id)}
+                onUpdateMaxArticles={(max) => updateMaxArticles(section.id, max)}
+                onAddArticle={(articleId) => addArticleToSection(section.id, articleId)}
+                onRemoveArticle={(articleId) => removeArticleFromSection(section.id, articleId)}
+                availableArticles={availableArticles}
+                getCategoryColor={getCategoryColor}
+              />
             ))}
           </div>
         </TabsContent>
