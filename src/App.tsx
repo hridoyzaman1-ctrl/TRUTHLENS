@@ -23,6 +23,7 @@ import AdminJobs from "./pages/admin/AdminJobs";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminFeatured from "./pages/admin/AdminFeatured";
+import AdminEditorial from "./pages/admin/AdminEditorial";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="featured" element={<AdminFeatured />} />
+              <Route path="editorial" element={<AdminEditorial />} />
               <Route path="articles" element={<AdminArticles />} />
               <Route path="categories" element={<AdminCategories />} />
               <Route path="media" element={<AdminMedia />} />

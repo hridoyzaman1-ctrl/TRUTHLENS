@@ -7,6 +7,8 @@ import { TrendingSidebar } from '@/components/news/TrendingSidebar';
 import { EditorialSection } from '@/components/news/EditorialSection';
 import { VideoSection } from '@/components/news/VideoSection';
 import { NewsletterSignup } from '@/components/news/NewsletterSignup';
+import { InternshipBanner } from '@/components/news/InternshipBanner';
+import { HomepageComments } from '@/components/news/HomepageComments';
 import { articles } from '@/data/mockData';
 import { ArticleCard } from '@/components/news/ArticleCard';
 
@@ -45,6 +47,12 @@ const Index = () => {
 
       {/* Editorial Section */}
       <EditorialSection />
+
+      {/* Reader Comments Section */}
+      <HomepageComments />
+
+      {/* Internship Banner */}
+      <InternshipBanner />
 
       <CategorySection category="untold-stories" title="Untold Stories" />
       
