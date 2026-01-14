@@ -4,6 +4,8 @@ import { Layout } from '@/components/layout/Layout';
 import { articles } from '@/data/mockData';
 import { ArticleCard } from '@/components/news/ArticleCard';
 import { ArticleCardSkeleton } from '@/components/ui/skeletons';
+import { PaginationControls } from '@/components/ui/pagination-controls';
+import { usePagination } from '@/hooks/usePagination';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -125,6 +127,19 @@ const SearchPage = () => {
     return results;
   }, [query, category, dateRange, sortBy]);
 
+  const ITEMS_PER_PAGE = 9;
+  
+  const {
+    currentItems,
+    currentPage,
+    totalPages,
+    goToPage,
+    isLoading: isPaginationLoading
+  } = usePagination({
+    items: filteredArticles,
+    itemsPerPage: ITEMS_PER_PAGE
+  });
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearchParams(query ? { q: query } : {});
@@ -139,6 +154,7 @@ const SearchPage = () => {
   };
 
   const hasActiveFilters = query || category !== 'all' || dateRange !== 'all' || sortBy !== 'newest';
+  const showLoading = isLoading || isPaginationLoading;
 
   return (
     <Layout>
@@ -287,6 +303,7 @@ const SearchPage = () => {
               <p className="text-sm text-muted-foreground">
                 {filteredArticles.length} {filteredArticles.length === 1 ? 'result' : 'results'} found
                 {query && <span> for "<span className="text-foreground font-medium">{query}</span>"</span>}
+                {totalPages > 1 && <span className="ml-1">• Page {currentPage} of {totalPages}</span>}
               </p>
               
               {/* Mobile Sort */}
@@ -307,18 +324,28 @@ const SearchPage = () => {
             </div>
 
             {/* Results Grid */}
-            {isLoading ? (
+            {showLoading ? (
               <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
+                {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
                   <ArticleCardSkeleton key={i} />
                 ))}
               </div>
-            ) : filteredArticles.length > 0 ? (
-              <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-                {filteredArticles.map((article) => (
-                  <ArticleCard key={article.id} article={article} />
-                ))}
-              </div>
+            ) : currentItems.length > 0 ? (
+              <>
+                <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                  {currentItems.map((article) => (
+                    <ArticleCard key={article.id} article={article} />
+                  ))}
+                </div>
+                
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={goToPage}
+                  isLoading={isPaginationLoading}
+                  className="mt-8"
+                />
+              </>
             ) : (
               <div className="text-center py-16 bg-card rounded-xl border border-border">
                 <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

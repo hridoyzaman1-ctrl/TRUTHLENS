@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FileText, FolderOpen, Image, Users, Briefcase, Settings, Menu, X, LogOut, Star, Pen, LayoutGrid, Navigation, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { isAdminAuthenticated, adminLogout } from './AdminLogin';
 import logo from '@/assets/truthlens-logo.png';
+import { toast } from 'sonner';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
@@ -23,6 +25,14 @@ const navItems = [
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Check authentication on mount and route changes
+  useEffect(() => {
+    if (!isAdminAuthenticated()) {
+      navigate('/admin/login', { state: { from: location.pathname }, replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   // Close sidebar when route changes on mobile
   const handleNavClick = () => {
@@ -30,6 +40,17 @@ const AdminLayout = () => {
       setSidebarOpen(false);
     }
   };
+
+  const handleLogout = () => {
+    adminLogout();
+    toast.success('Logged out successfully');
+    navigate('/admin/login', { replace: true });
+  };
+
+  // Don't render layout if not authenticated
+  if (!isAdminAuthenticated()) {
+    return null;
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -66,9 +87,9 @@ const AdminLayout = () => {
           ))}
         </nav>
         <div className="absolute bottom-4 left-4 right-4">
-          <Link to="/" onClick={handleNavClick}>
-            <Button variant="outline" className="w-full"><LogOut className="mr-2 h-4 w-4" />Exit Admin</Button>
-          </Link>
+          <Button variant="outline" className="w-full" onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />Logout
+          </Button>
         </div>
       </aside>
 
