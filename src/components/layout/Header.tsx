@@ -3,13 +3,17 @@ import { Link } from 'react-router-dom';
 import { Menu, X, Search, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { categories } from '@/data/mockData';
+import { headerMenuItems, categories } from '@/data/mockData';
 import { motion, AnimatePresence } from 'framer-motion';
 import logo from '@/assets/truthlens-logo.png';
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  const visibleMenuItems = headerMenuItems
+    .filter(item => item.isVisible)
+    .sort((a, b) => a.order - b.order);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -47,28 +51,21 @@ export const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex lg:items-center lg:gap-1">
-            {categories.slice(0, 7).map((category) => (
+            {visibleMenuItems.slice(0, 9).map((item) => (
               <Link
-                key={category.id}
-                to={`/category/${category.id}`}
-                className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                key={item.id}
+                to={item.path}
+                className={`px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1 ${
+                  item.highlight 
+                    ? 'font-semibold text-primary hover:text-primary/80' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
-                {category.name}
+                {item.icon && <span>{item.icon}</span>}
+                {item.label}
               </Link>
             ))}
-              <Link
-                to="/category/untold-stories"
-                className="px-3 py-2 text-sm font-semibold text-accent transition-colors hover:text-accent/80"
-              >
-                Untold Stories
-              </Link>
-              <Link
-                to="/internship"
-                className="px-3 py-2 text-sm font-semibold text-primary transition-colors hover:text-primary/80 flex items-center gap-1"
-              >
-                🎓 Internship
-              </Link>
-            </nav>
+          </nav>
 
           {/* Actions */}
           <div className="flex items-center gap-2">
@@ -124,23 +121,19 @@ export const Header = () => {
             className="absolute top-full left-0 right-0 border-t border-border lg:hidden overflow-hidden bg-background shadow-lg z-50"
           >
             <nav className="container mx-auto flex flex-col px-4 py-4">
-              {categories.map((category) => (
+              {visibleMenuItems.map((item) => (
                 <Link
-                  key={category.id}
-                  to={`/category/${category.id}`}
-                  className="border-b border-border py-3 text-sm font-medium text-foreground hover:text-primary transition-colors"
+                  key={item.id}
+                  to={item.path}
+                  className={`border-b border-border py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
+                    item.highlight ? 'text-primary font-semibold' : 'text-foreground hover:text-primary'
+                  }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  {category.name}
+                  {item.icon && <span>{item.icon}</span>}
+                  {item.label}
                 </Link>
               ))}
-              <Link
-                to="/internship"
-                className="border-b border-border py-3 text-sm font-semibold text-accent hover:text-accent/80"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                🎓 Apply for Internship
-              </Link>
               <Link
                 to="/about"
                 className="border-b border-border py-3 text-sm font-medium text-foreground"
