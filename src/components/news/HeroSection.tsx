@@ -84,25 +84,27 @@ export const HeroSection = () => {
                     )}
 
                     <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 lg:p-8">
-                      <Badge className={`${getCategoryColor(currentArticle.category)} mb-3 text-white border-0 uppercase tracking-wide text-xs`}>
+                      <Badge className={`${getCategoryColor(currentArticle.category)} mb-2 md:mb-3 text-white border-0 uppercase tracking-wide text-[10px] md:text-xs`}>
                         {currentArticle.category.replace('-', ' ')}
                       </Badge>
-                      <h2 className="font-display text-xl font-bold text-white md:text-2xl lg:text-3xl xl:text-4xl leading-tight">
+                      <h2 className="font-display text-lg font-bold text-white md:text-2xl lg:text-3xl xl:text-4xl leading-tight line-clamp-2 md:line-clamp-none">
                         {currentArticle.title}
                       </h2>
-                      <p className="mt-2 line-clamp-2 text-sm text-white/80 md:text-base max-w-3xl">
+                      {/* Hide excerpt on mobile */}
+                      <p className="mt-2 line-clamp-2 text-sm text-white/80 md:text-base max-w-3xl hidden md:block">
                         {currentArticle.excerpt}
                       </p>
-                      <div className="mt-4 flex items-center gap-4 text-xs text-white/70">
+                      {/* Simplified mobile meta, full on desktop */}
+                      <div className="mt-2 md:mt-4 flex items-center gap-2 md:gap-4 text-[10px] md:text-xs text-white/70">
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {formatDistanceToNow(currentArticle.publishedAt, { addSuffix: true })}
                         </span>
-                        <span className="flex items-center gap-1">
+                        <span className="hidden sm:flex items-center gap-1">
                           <Eye className="h-3 w-3" />
                           {currentArticle.views.toLocaleString()} views
                         </span>
-                        <span>By {currentArticle.author.name}</span>
+                        <span className="hidden md:inline">By {currentArticle.author.name}</span>
                       </div>
                     </div>
                   </Link>

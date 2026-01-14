@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Menu, X, Search, User, ChevronDown } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Menu, X, Search, User, ChevronDown, Calendar, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { headerMenuItems, categories } from '@/data/mockData';
+import { headerMenuItems, categories, articles } from '@/data/mockData';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DropdownMenu,
@@ -16,6 +16,8 @@ import logo from '@/assets/truthlens-logo.png';
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
 
   const visibleMenuItems = headerMenuItems
     .filter(item => item.isVisible)
@@ -133,7 +135,7 @@ export const Header = () => {
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* Search Bar with Functionality */}
       <AnimatePresence>
         {isSearchOpen && (
           <motion.div
@@ -143,15 +145,76 @@ export const Header = () => {
             className="border-t border-border overflow-hidden"
           >
             <div className="container mx-auto px-4 py-4">
-              <div className="relative">
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (searchQuery.trim()) {
+                    // Find matching articles
+                    const results = articles.filter(a => 
+                      a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      a.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      a.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      a.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
+                    );
+                    if (results.length > 0) {
+                      navigate(`/article/${results[0].slug}`);
+                      setSearchQuery('');
+                      setIsSearchOpen(false);
+                    }
+                  }
+                }}
+                className="relative"
+              >
                 <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search articles, topics, authors..."
                   className="w-full rounded-lg border border-input bg-background py-3 pl-10 pr-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   autoFocus
                 />
-              </div>
+              </form>
+              
+              {/* Search Results Preview */}
+              {searchQuery.trim() && (
+                <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
+                  {articles
+                    .filter(a => 
+                      a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      a.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      a.category.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .slice(0, 5)
+                    .map((article) => (
+                      <Link
+                        key={article.id}
+                        to={`/article/${article.slug}`}
+                        className="flex items-center gap-3 p-3 hover:bg-muted transition-colors border-b border-border last:border-0"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setIsSearchOpen(false);
+                        }}
+                      >
+                        <img 
+                          src={article.featuredImage} 
+                          alt={article.title}
+                          className="h-12 w-16 object-cover rounded"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{article.title}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{article.category.replace('-', ' ')}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  {articles.filter(a => 
+                    a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    a.excerpt.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).length === 0 && (
+                    <p className="p-4 text-sm text-muted-foreground text-center">No articles found</p>
+                  )}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -171,8 +234,20 @@ export const Header = () => {
             
             {/* Menu container with border and shadow */}
             <nav className="relative mx-3 my-2 flex flex-col bg-card border-2 border-border rounded-xl shadow-2xl max-h-[70vh] overflow-y-auto">
+              {/* Date & Time Header */}
+              <div className="px-4 pt-4 pb-3 border-b border-border bg-muted/30">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>{new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+              </div>
+              
               {/* Categories section */}
-              <div className="px-4 pt-4 pb-2">
+              <div className="px-4 pt-3 pb-2">
                 <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">
                   Categories
                 </div>
@@ -183,7 +258,7 @@ export const Header = () => {
                   <Link
                     key={item.id}
                     to={item.path}
-                    className={`block mx-2 px-3 py-3 text-sm font-medium transition-colors rounded-lg flex items-center gap-2 ${
+                    className={`block mx-2 px-3 py-2.5 text-sm font-medium transition-colors rounded-lg flex items-center gap-2 ${
                       item.highlight 
                         ? 'text-primary font-semibold bg-primary/5 hover:bg-primary/10' 
                         : 'text-foreground hover:bg-muted hover:text-primary'
@@ -197,33 +272,33 @@ export const Header = () => {
               </div>
               
               {/* Divider */}
-              <div className="mx-4 my-3 border-t border-border" />
+              <div className="mx-4 my-2 border-t border-border" />
               
               {/* More section */}
-              <div className="px-4 pb-2">
+              <div className="px-4 pb-1">
                 <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
                   More
                 </div>
               </div>
               
-              <div className="px-2 pb-4">
+              <div className="px-2 pb-3">
                 <Link
                   to="/about"
-                  className="block mx-2 px-3 py-3 text-sm font-medium text-foreground hover:bg-muted hover:text-primary rounded-lg transition-colors"
+                  className="block mx-2 px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted hover:text-primary rounded-lg transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   About Us
                 </Link>
                 <Link
                   to="/careers"
-                  className="block mx-2 px-3 py-3 text-sm font-medium text-foreground hover:bg-muted hover:text-primary rounded-lg transition-colors"
+                  className="block mx-2 px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted hover:text-primary rounded-lg transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Careers
                 </Link>
                 <Link
                   to="/contact"
-                  className="block mx-2 px-3 py-3 text-sm font-medium text-foreground hover:bg-muted hover:text-primary rounded-lg transition-colors"
+                  className="block mx-2 px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted hover:text-primary rounded-lg transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Contact
