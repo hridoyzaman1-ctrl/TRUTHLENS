@@ -31,9 +31,9 @@ export const ArticleCard = ({ article, variant = 'default' }: ArticleCardProps) 
     return (
       <Link
         to={`/article/${article.slug}`}
-        className="group flex gap-3 py-3 border-b border-border last:border-0"
+        className="group block overflow-hidden rounded-lg bg-card transition-shadow hover:shadow-md border border-border"
       >
-        <div className="h-16 w-20 flex-shrink-0 overflow-hidden rounded-md relative">
+        <div className="aspect-[16/9] overflow-hidden relative">
           <img
             src={article.featuredImage}
             alt={article.title}
@@ -41,16 +41,20 @@ export const ArticleCard = ({ article, variant = 'default' }: ArticleCardProps) 
             loading="lazy"
           />
           {article.hasVideo && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-              <PlayCircle className="h-5 w-5 text-white" />
+            <div className="absolute top-1.5 right-1.5 flex items-center gap-1 bg-black/60 px-1.5 py-0.5 rounded-full">
+              <PlayCircle className="h-2.5 w-2.5 text-white" />
+              <span className="text-[9px] font-medium text-white">Video</span>
             </div>
           )}
+          <Badge className={`absolute bottom-1.5 left-1.5 ${getCategoryColor(article.category)} text-white border-0 text-[9px] px-1.5 py-0`}>
+            {article.category.replace('-', ' ')}
+          </Badge>
         </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="line-clamp-2 text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+        <div className="p-2.5">
+          <h4 className="line-clamp-2 text-xs font-semibold text-foreground group-hover:text-primary transition-colors leading-tight">
             {article.title}
           </h4>
-          <span className="text-xs text-muted-foreground mt-1 block">
+          <span className="text-[10px] text-muted-foreground mt-1 block">
             {formatDistanceToNow(article.publishedAt, { addSuffix: true })}
           </span>
         </div>

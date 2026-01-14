@@ -1,10 +1,16 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, Search, User } from 'lucide-react';
+import { Menu, X, Search, User, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { headerMenuItems, categories } from '@/data/mockData';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import logo from '@/assets/truthlens-logo.png';
 
 export const Header = () => {
@@ -14,6 +20,10 @@ export const Header = () => {
   const visibleMenuItems = headerMenuItems
     .filter(item => item.isVisible)
     .sort((a, b) => a.order - b.order);
+
+  // Show first 5 items in main nav, rest in "More" dropdown
+  const mainNavItems = visibleMenuItems.slice(0, 5);
+  const moreNavItems = visibleMenuItems.slice(5);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -40,18 +50,18 @@ export const Header = () => {
             {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
 
-          {/* Logo - Fixed sizing for mobile */}
+          {/* Logo - Larger sizing */}
           <Link to="/" className="flex items-center">
             <img 
               src={logo} 
               alt="TruthLens" 
-              className="h-8 w-auto sm:h-10 md:h-12 object-contain" 
+              className="h-10 w-auto sm:h-12 md:h-14 lg:h-16 object-contain" 
             />
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex lg:items-center lg:gap-1">
-            {visibleMenuItems.slice(0, 9).map((item) => (
+            {mainNavItems.map((item) => (
               <Link
                 key={item.id}
                 to={item.path}
@@ -65,6 +75,42 @@ export const Header = () => {
                 {item.label}
               </Link>
             ))}
+            
+            {/* More Dropdown */}
+            {moreNavItems.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-1">
+                    More
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 bg-background border border-border shadow-lg z-50">
+                  {moreNavItems.map((item) => (
+                    <DropdownMenuItem key={item.id} asChild>
+                      <Link
+                        to={item.path}
+                        className={`w-full flex items-center gap-2 ${
+                          item.highlight ? 'font-semibold text-primary' : ''
+                        }`}
+                      >
+                        {item.icon && <span>{item.icon}</span>}
+                        {item.label}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuItem asChild>
+                    <Link to="/about" className="w-full">About Us</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/careers" className="w-full">Careers</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/contact" className="w-full">Contact</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </nav>
 
           {/* Actions */}
@@ -111,7 +157,7 @@ export const Header = () => {
         )}
       </AnimatePresence>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu - Shows ALL items */}
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
@@ -120,7 +166,10 @@ export const Header = () => {
             exit={{ height: 0, opacity: 0 }}
             className="absolute top-full left-0 right-0 border-t border-border lg:hidden overflow-hidden bg-background shadow-lg z-50"
           >
-            <nav className="container mx-auto flex flex-col px-4 py-4">
+            <nav className="container mx-auto flex flex-col px-4 py-4 max-h-[70vh] overflow-y-auto">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                Categories
+              </div>
               {visibleMenuItems.map((item) => (
                 <Link
                   key={item.id}
@@ -134,23 +183,27 @@ export const Header = () => {
                   {item.label}
                 </Link>
               ))}
+              
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-4 mb-2 px-1">
+                More
+              </div>
               <Link
                 to="/about"
-                className="border-b border-border py-3 text-sm font-medium text-foreground"
+                className="border-b border-border py-3 text-sm font-medium text-foreground hover:text-primary"
                 onClick={() => setIsMenuOpen(false)}
               >
                 About Us
               </Link>
               <Link
                 to="/careers"
-                className="border-b border-border py-3 text-sm font-medium text-foreground"
+                className="border-b border-border py-3 text-sm font-medium text-foreground hover:text-primary"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Careers
               </Link>
               <Link
                 to="/contact"
-                className="py-3 text-sm font-medium text-foreground"
+                className="py-3 text-sm font-medium text-foreground hover:text-primary"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Contact

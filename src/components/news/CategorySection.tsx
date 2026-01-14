@@ -16,10 +16,10 @@ export const CategorySection = ({ category, title, showMore = true }: CategorySe
   if (categoryArticles.length === 0) return null;
 
   return (
-    <section className="py-8">
+    <section className="py-4 md:py-6">
       <div className="container mx-auto px-4">
-        <div className="mb-6 flex items-center justify-between border-b-2 border-primary pb-2">
-          <h2 className="font-display text-xl font-bold text-foreground md:text-2xl">
+        <div className="mb-4 flex items-center justify-between border-b-2 border-primary pb-2">
+          <h2 className="font-display text-lg font-bold text-foreground md:text-xl">
             {title}
           </h2>
           {showMore && (
@@ -33,9 +33,9 @@ export const CategorySection = ({ category, title, showMore = true }: CategorySe
           )}
         </div>
         
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {categoryArticles.map((article) => (
-            <ArticleCard key={article.id} article={article} />
+            <ArticleCard key={article.id} article={article} variant="compact" />
           ))}
         </div>
       </div>
