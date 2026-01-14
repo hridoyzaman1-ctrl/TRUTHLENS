@@ -5,6 +5,7 @@ import { Clock, Eye, ChevronLeft, ChevronRight, Pause, Play, PlayCircle } from '
 import { articles } from '@/data/mockData';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 
 export const HeroSection = () => {
@@ -12,6 +13,13 @@ export const HeroSection = () => {
   const sideArticles = articles.filter(a => !a.isFeatured).slice(0, 4);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Simulate initial loading
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   const goToNext = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % featuredArticles.length);
@@ -28,7 +36,50 @@ export const HeroSection = () => {
     return () => clearInterval(interval);
   }, [featuredArticles.length, isAutoPlaying, goToNext]);
 
-  if (featuredArticles.length === 0) return null;
+  if (featuredArticles.length === 0 && !isLoading) return null;
+
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <section className="py-6 md:py-8">
+        <div className="container mx-auto px-4">
+          <div className="grid gap-4 lg:grid-cols-3 lg:gap-6">
+            {/* Main Featured Skeleton */}
+            <div className="lg:col-span-2">
+              <div className="relative overflow-hidden rounded-xl bg-card border border-border">
+                <Skeleton className="aspect-[16/10] lg:aspect-[16/9] w-full" />
+                <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 lg:p-8 space-y-3">
+                  <Skeleton className="h-5 w-24 bg-white/20" />
+                  <Skeleton className="h-8 w-full bg-white/20" />
+                  <Skeleton className="h-8 w-3/4 bg-white/20" />
+                  <Skeleton className="h-4 w-full bg-white/20 hidden md:block" />
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="h-10 w-10 rounded-full bg-white/20" />
+                    <Skeleton className="h-4 w-32 bg-white/20" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Side Articles Skeleton */}
+            <div className="flex flex-col gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex gap-3 p-3 rounded-lg bg-card border border-border">
+                  <Skeleton className="h-20 w-28 rounded-md shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   const currentArticle = featuredArticles[currentIndex];
 

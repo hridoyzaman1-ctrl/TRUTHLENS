@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { articles } from '@/data/mockData';
 import { ArticleCard } from '@/components/news/ArticleCard';
+import { ArticleCardSkeleton } from '@/components/ui/skeletons';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -56,6 +57,14 @@ const SearchPage = () => {
   const [dateRange, setDateRange] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Simulate loading state on filter changes
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, [category, dateRange, sortBy]);
 
   const filteredArticles = useMemo(() => {
     let results = [...articles];
@@ -298,7 +307,13 @@ const SearchPage = () => {
             </div>
 
             {/* Results Grid */}
-            {filteredArticles.length > 0 ? (
+            {isLoading ? (
+              <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <ArticleCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : filteredArticles.length > 0 ? (
               <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                 {filteredArticles.map((article) => (
                   <ArticleCard key={article.id} article={article} />

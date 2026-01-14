@@ -1,11 +1,44 @@
+import { useState, useEffect } from 'react';
 import { articles } from '@/data/mockData';
 import { ArticleCard } from './ArticleCard';
 import { TrendingUp, Eye } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export const TrendingSidebar = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  
   const trendingArticles = [...articles]
     .sort((a, b) => b.views - a.views)
     .slice(0, 5);
+
+  // Simulate loading
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl bg-card p-4 border border-border">
+        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border">
+          <Skeleton className="h-5 w-5 rounded" />
+          <Skeleton className="h-6 w-32" />
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-start gap-3">
+              <Skeleton className="h-6 w-6 rounded-full shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl bg-card p-4 border border-border">

@@ -1,13 +1,24 @@
 import { useParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { articles, categories } from '@/data/mockData';
 import { ArticleCard } from '@/components/news/ArticleCard';
+import { ArticleCardSkeleton } from '@/components/ui/skeletons';
 import { Category } from '@/types/news';
 
 const CategoryPage = () => {
   const { categoryId } = useParams<{ categoryId: string }>();
+  const [isLoading, setIsLoading] = useState(true);
+  
   const category = categories.find(c => c.id === categoryId);
   const categoryArticles = articles.filter(a => a.category === categoryId as Category);
+
+  // Simulate loading state (will be real when connected to Cloud)
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, [categoryId]);
 
   if (!category) {
     return (
@@ -31,7 +42,13 @@ const CategoryPage = () => {
       </div>
 
       <div className="container mx-auto px-4 pb-12">
-        {categoryArticles.length > 0 ? (
+        {isLoading ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <ArticleCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : categoryArticles.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {categoryArticles.map((article) => (
               <ArticleCard key={article.id} article={article} />
