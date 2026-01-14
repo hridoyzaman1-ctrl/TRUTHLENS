@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle, Clock } from 'lucide-react';
+import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle, Clock, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useRateLimiter } from '@/hooks/useRateLimiter';
+import { useAdminAuth } from '@/context/AdminAuthContext';
+import { ROLE_DISPLAY } from '@/types/admin';
 import truthLensLogo from '@/assets/truthlens-logo.png';
 
 // Validation schemas
@@ -23,48 +25,17 @@ const resetSchema = z.object({
   email: z.string().email('Please enter a valid email address')
 });
 
-// Mock admin credentials (will be replaced with Cloud auth)
-const MOCK_ADMIN_CREDENTIALS = {
-  email: 'admin@truthlens.com',
-  password: 'admin123'
-};
-
-// Session storage keys
-const ADMIN_SESSION_KEY = 'truthlens_admin_session';
-const ADMIN_REMEMBER_KEY = 'truthlens_admin_remember';
-
-// Check if admin is authenticated
+// For backward compatibility
 export const isAdminAuthenticated = (): boolean => {
-  // First check localStorage (remember me), then sessionStorage
-  const persistedSession = localStorage.getItem(ADMIN_SESSION_KEY);
-  const session = persistedSession || sessionStorage.getItem(ADMIN_SESSION_KEY);
-  
-  if (!session) return false;
-  
-  try {
-    const parsed = JSON.parse(session);
-    // Check if session is expired (7 days for remembered, 24 hours for session)
-    const maxAge = persistedSession ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
-    if (Date.now() - parsed.timestamp > maxAge) {
-      localStorage.removeItem(ADMIN_SESSION_KEY);
-      sessionStorage.removeItem(ADMIN_SESSION_KEY);
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
+  const storedUser = localStorage.getItem('adminUser') || sessionStorage.getItem('adminUser');
+  return !!storedUser;
 };
 
-// Logout function
-export const adminLogout = () => {
-  sessionStorage.removeItem(ADMIN_SESSION_KEY);
-  localStorage.removeItem(ADMIN_SESSION_KEY);
-};
-
-// Get remembered email
-const getRememberedEmail = (): string => {
-  return localStorage.getItem(ADMIN_REMEMBER_KEY) || '';
+export const adminLogout = (): void => {
+  localStorage.removeItem('adminUser');
+  sessionStorage.removeItem('adminUser');
+  localStorage.removeItem('adminAuth');
+  sessionStorage.removeItem('adminAuth');
 };
 
 type ViewMode = 'login' | 'reset' | 'reset-sent';
@@ -72,10 +43,12 @@ type ViewMode = 'login' | 'reset' | 'reset-sent';
 const AdminLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState(getRememberedEmail());
+  const { login, isAuthenticated } = useAdminAuth();
+  
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(!!getRememberedEmail());
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState<{ email?: string; password?: string }>({});
@@ -90,10 +63,10 @@ const AdminLogin = () => {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAdminAuthenticated()) {
+    if (isAuthenticated) {
       navigate('/admin', { replace: true });
     }
-  }, [navigate]);
+  }, [navigate, isAuthenticated]);
 
   const validateForm = () => {
     try {
@@ -134,39 +107,17 @@ const AdminLogin = () => {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Mock authentication - will be replaced with Cloud auth
-    // When connected to Cloud, this will use supabase.auth.signInWithPassword
-    // and verify against a user_roles table for admin access
-    if (email === MOCK_ADMIN_CREDENTIALS.email && password === MOCK_ADMIN_CREDENTIALS.password) {
-      // Record successful attempt (resets rate limiter)
+    // Attempt login
+    const success = login(email, password, rememberMe);
+    
+    if (success) {
       rateLimiter.recordAttempt(true);
-      
-      // Create mock session
-      const session = {
-        user: {
-          id: 'admin-1',
-          email: email,
-          role: 'admin'
-        },
-        timestamp: Date.now()
-      };
-      
-      // Handle remember me
-      if (rememberMe) {
-        localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
-        localStorage.setItem(ADMIN_REMEMBER_KEY, email);
-      } else {
-        sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
-        localStorage.removeItem(ADMIN_REMEMBER_KEY);
-      }
-      
-      toast.success('Welcome back, Admin!');
+      toast.success('Welcome back!');
       
       // Redirect to intended page or admin dashboard
       const from = (location.state as { from?: string })?.from || '/admin';
       navigate(from, { replace: true });
     } else {
-      // Record failed attempt
       rateLimiter.recordAttempt(false);
       
       if (rateLimiter.attemptsRemaining <= 1) {
@@ -190,16 +141,9 @@ const AdminLogin = () => {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Mock password reset - will be replaced with Cloud auth
-    // When connected to Cloud, this will use supabase.auth.resetPasswordForEmail
-    if (email === MOCK_ADMIN_CREDENTIALS.email) {
-      setViewMode('reset-sent');
-      toast.success('Password reset email sent!');
-    } else {
-      // For security, always show success message even if email doesn't exist
-      setViewMode('reset-sent');
-      toast.success('If an account exists, a reset link has been sent.');
-    }
+    // For security, always show success message
+    setViewMode('reset-sent');
+    toast.success('If an account exists, a reset link has been sent.');
 
     setIsLoading(false);
   };
@@ -263,6 +207,20 @@ const AdminLogin = () => {
                   onSubmit={handleLogin}
                   className="space-y-4"
                 >
+                  {/* Demo Credentials Info */}
+                  <Alert className="border-blue-500/50 bg-blue-500/10">
+                    <Info className="h-4 w-4 text-blue-500" />
+                    <AlertDescription className="text-xs">
+                      <p className="font-semibold mb-1">Demo Accounts:</p>
+                      <div className="space-y-0.5 text-muted-foreground">
+                        <p><span className="font-mono">admin@truthlens.com</span> / admin123</p>
+                        <p><span className="font-mono">editor@truthlens.com</span> / editor123</p>
+                        <p><span className="font-mono">author@truthlens.com</span> / author123</p>
+                        <p><span className="font-mono">journalist@truthlens.com</span> / journalist123</p>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+
                   {rateLimiter.isLocked && (
                     <Alert variant="destructive" className="border-orange-500/50 bg-orange-500/10">
                       <Clock className="h-4 w-4 text-orange-500" />
@@ -459,7 +417,7 @@ const AdminLogin = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
-                  className="space-y-4 text-center"
+                  className="text-center space-y-6"
                 >
                   <div className="flex justify-center">
                     <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center">
@@ -467,62 +425,34 @@ const AdminLogin = () => {
                     </div>
                   </div>
                   
-                  <p className="text-sm text-muted-foreground">
-                    If an account exists for <strong>{email}</strong>, you'll receive a password reset link shortly.
-                  </p>
-
-                  <p className="text-xs text-muted-foreground">
-                    Didn't receive the email? Check your spam folder or try again.
-                  </p>
-
-                  <div className="pt-4 space-y-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      onClick={switchToReset}
-                    >
-                      Try Again
-                    </Button>
-                    <Button
-                      type="button"
-                      className="w-full"
-                      onClick={switchToLogin}
-                    >
-                      <ArrowLeft className="h-4 w-4 mr-2" />
-                      Back to Login
-                    </Button>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      If an account exists for <span className="font-medium text-foreground">{email}</span>, 
+                      you will receive password reset instructions shortly.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Check your spam folder if you don't see the email.
+                    </p>
                   </div>
+
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={switchToLogin}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back to Login
+                  </Button>
                 </motion.div>
               )}
             </AnimatePresence>
-
-            {viewMode === 'login' && (
-              <>
-                <div className="mt-6 pt-6 border-t border-border">
-                  <p className="text-xs text-center text-muted-foreground">
-                    <span className="font-medium">Demo credentials:</span><br />
-                    Email: admin@truthlens.com<br />
-                    Password: admin123
-                  </p>
-                </div>
-              </>
-            )}
-
-            <div className="mt-4 text-center">
-              <a 
-                href="/"
-                className="text-sm text-primary hover:underline"
-              >
-                ← Back to Homepage
-              </a>
-            </div>
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-muted-foreground mt-4">
-          Protected by enterprise-grade security.<br />
-          Unauthorized access is strictly prohibited.
+        {/* Footer */}
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          Protected by TruthLens Security • 
+          <a href="/privacy" className="hover:underline ml-1">Privacy Policy</a>
         </p>
       </motion.div>
     </div>

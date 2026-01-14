@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, Eye, X, Search, Filter, Image, Video, Save } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Search, Image, Video, Save, CheckCircle, XCircle, Clock, Send, AlertCircle } from 'lucide-react';
 import { Article, Category } from '@/types/news';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -24,14 +24,39 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAdminAuth } from '@/context/AdminAuthContext';
+
+type ArticleStatus = 'draft' | 'pending_review' | 'published' | 'rejected' | 'scheduled';
+
+interface ExtendedArticle extends Omit<Article, 'status'> {
+  status: ArticleStatus;
+  submittedBy?: string;
+  reviewedBy?: string;
+  reviewNote?: string;
+}
 
 const AdminArticles = () => {
-  const [articlesList, setArticlesList] = useState<Article[]>(articles);
+  const { currentUser, hasPermission } = useAdminAuth();
+  
+  // Extend articles with proper status
+  const [articlesList, setArticlesList] = useState<ExtendedArticle[]>(
+    articles.map(a => ({ 
+      ...a, 
+      status: a.status as ArticleStatus,
+      submittedBy: a.author.id 
+    }))
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+  const [reviewingArticle, setReviewingArticle] = useState<ExtendedArticle | null>(null);
+  const [reviewNote, setReviewNote] = useState('');
+  const [editingArticle, setEditingArticle] = useState<ExtendedArticle | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     excerpt: '',
@@ -42,17 +67,44 @@ const AdminArticles = () => {
     tags: '',
     isBreaking: false,
     isFeatured: false,
-    status: 'draft' as 'draft' | 'published' | 'scheduled',
+    status: 'draft' as ArticleStatus,
     authorId: '1'
   });
 
-  const filteredArticles = articlesList.filter(article => {
+  // Permission checks
+  const canPublishDirectly = hasPermission('publishArticles');
+  const canReview = hasPermission('reviewArticles');
+  const canSetBreaking = hasPermission('setBreakingNews');
+  const canSetFeatured = hasPermission('setFeatured');
+  const canEditAll = hasPermission('editAllArticles');
+  const canDeleteAll = hasPermission('deleteAllArticles');
+
+  // Filter articles based on user role
+  const getVisibleArticles = () => {
+    if (canEditAll) {
+      return articlesList;
+    }
+    // Authors/Journalists can only see their own articles
+    return articlesList.filter(a => a.submittedBy === currentUser?.id || a.author.id === currentUser?.id);
+  };
+
+  const visibleArticles = getVisibleArticles();
+
+  const filteredArticles = visibleArticles.filter(article => {
     const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           article.author.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = filterCategory === 'all' || article.category === filterCategory;
     const matchesStatus = filterStatus === 'all' || article.status === filterStatus;
+    
+    // Tab filtering
+    if (activeTab === 'pending' && article.status !== 'pending_review') return false;
+    if (activeTab === 'published' && article.status !== 'published') return false;
+    if (activeTab === 'draft' && article.status !== 'draft') return false;
+    
     return matchesSearch && matchesCategory && matchesStatus;
   });
+
+  const pendingCount = visibleArticles.filter(a => a.status === 'pending_review').length;
 
   const openCreateDialog = () => {
     setEditingArticle(null);
@@ -67,12 +119,18 @@ const AdminArticles = () => {
       isBreaking: false,
       isFeatured: false,
       status: 'draft',
-      authorId: '1'
+      authorId: currentUser?.id || '1'
     });
     setIsDialogOpen(true);
   };
 
-  const openEditDialog = (article: Article) => {
+  const openEditDialog = (article: ExtendedArticle) => {
+    // Check if user can edit this article
+    if (!canEditAll && article.submittedBy !== currentUser?.id && article.author.id !== currentUser?.id) {
+      toast.error('You can only edit your own articles');
+      return;
+    }
+    
     setEditingArticle(article);
     setFormData({
       title: article.title,
@@ -88,6 +146,12 @@ const AdminArticles = () => {
       authorId: article.author.id
     });
     setIsDialogOpen(true);
+  };
+
+  const openReviewDialog = (article: ExtendedArticle) => {
+    setReviewingArticle(article);
+    setReviewNote('');
+    setIsReviewDialogOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -110,8 +174,8 @@ const AdminArticles = () => {
               featuredImage: formData.featuredImage,
               videoUrl: formData.videoUrl || undefined,
               tags: tagsArray,
-              isBreaking: formData.isBreaking,
-              isFeatured: formData.isFeatured,
+              isBreaking: canSetBreaking ? formData.isBreaking : a.isBreaking,
+              isFeatured: canSetFeatured ? formData.isFeatured : a.isFeatured,
               status: formData.status,
               updatedAt: new Date()
             }
@@ -120,7 +184,7 @@ const AdminArticles = () => {
       toast.success('Article updated successfully!');
     } else {
       // Create new article
-      const newArticle: Article = {
+      const newArticle: ExtendedArticle = {
         id: Date.now().toString(),
         title: formData.title,
         slug: formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
@@ -131,13 +195,14 @@ const AdminArticles = () => {
         featuredImage: formData.featuredImage || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1200',
         videoUrl: formData.videoUrl || undefined,
         tags: tagsArray,
-        isBreaking: formData.isBreaking,
-        isFeatured: formData.isFeatured,
+        isBreaking: canSetBreaking ? formData.isBreaking : false,
+        isFeatured: canSetFeatured ? formData.isFeatured : false,
         status: formData.status,
         publishedAt: formData.status === 'published' ? new Date() : new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
-        views: 0
+        views: 0,
+        submittedBy: currentUser?.id
       };
       setArticlesList(prev => [newArticle, ...prev]);
       toast.success('Article created successfully!');
@@ -146,22 +211,145 @@ const AdminArticles = () => {
     setIsDialogOpen(false);
   };
 
+  const handleSubmitForReview = (article: ExtendedArticle) => {
+    setArticlesList(prev => prev.map(a => 
+      a.id === article.id 
+        ? { ...a, status: 'pending_review' as ArticleStatus, updatedAt: new Date() }
+        : a
+    ));
+    toast.success('Article submitted for review!');
+  };
+
+  const handleApprove = () => {
+    if (!reviewingArticle) return;
+    
+    setArticlesList(prev => prev.map(a => 
+      a.id === reviewingArticle.id 
+        ? { 
+            ...a, 
+            status: 'published' as ArticleStatus, 
+            publishedAt: new Date(),
+            reviewedBy: currentUser?.id,
+            reviewNote: reviewNote || undefined,
+            updatedAt: new Date() 
+          }
+        : a
+    ));
+    setIsReviewDialogOpen(false);
+    toast.success('Article approved and published!');
+  };
+
+  const handleReject = () => {
+    if (!reviewingArticle || !reviewNote.trim()) {
+      toast.error('Please provide a reason for rejection');
+      return;
+    }
+    
+    setArticlesList(prev => prev.map(a => 
+      a.id === reviewingArticle.id 
+        ? { 
+            ...a, 
+            status: 'rejected' as ArticleStatus, 
+            reviewedBy: currentUser?.id,
+            reviewNote: reviewNote,
+            updatedAt: new Date() 
+          }
+        : a
+    ));
+    setIsReviewDialogOpen(false);
+    toast.success('Article rejected');
+  };
+
   const handleDelete = (id: string) => {
+    const article = articlesList.find(a => a.id === id);
+    if (!article) return;
+    
+    // Check permissions
+    if (!canDeleteAll && article.submittedBy !== currentUser?.id && article.author.id !== currentUser?.id) {
+      toast.error('You can only delete your own articles');
+      return;
+    }
+    
     if (window.confirm('Are you sure you want to delete this article?')) {
       setArticlesList(prev => prev.filter(a => a.id !== id));
       toast.success('Article deleted successfully!');
     }
   };
 
+  const getStatusBadge = (status: ArticleStatus) => {
+    switch (status) {
+      case 'published':
+        return <Badge className="bg-green-500/20 text-green-600 border-green-500/30">Published</Badge>;
+      case 'pending_review':
+        return <Badge className="bg-orange-500/20 text-orange-600 border-orange-500/30">Pending Review</Badge>;
+      case 'rejected':
+        return <Badge className="bg-red-500/20 text-red-600 border-red-500/30">Rejected</Badge>;
+      case 'scheduled':
+        return <Badge className="bg-blue-500/20 text-blue-600 border-blue-500/30">Scheduled</Badge>;
+      default:
+        return <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30">Draft</Badge>;
+    }
+  };
+
+  // Determine available statuses based on permissions
+  const getAvailableStatuses = () => {
+    if (canPublishDirectly) {
+      return [
+        { value: 'draft', label: 'Draft' },
+        { value: 'pending_review', label: 'Submit for Review' },
+        { value: 'published', label: 'Publish Now' },
+        { value: 'scheduled', label: 'Schedule' },
+      ];
+    }
+    return [
+      { value: 'draft', label: 'Draft' },
+      { value: 'pending_review', label: 'Submit for Review' },
+    ];
+  };
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h1 className="font-display text-2xl font-bold text-foreground">Articles</h1>
+        <div>
+          <h1 className="font-display text-2xl font-bold text-foreground">Articles</h1>
+          {!canEditAll && (
+            <p className="text-sm text-muted-foreground">Showing your articles only</p>
+          )}
+        </div>
         <Button onClick={openCreateDialog}>
           <Plus className="mr-2 h-4 w-4" />
           New Article
         </Button>
       </div>
+
+      {/* Role-specific alerts */}
+      {!canPublishDirectly && (
+        <Alert className="mb-6 border-blue-500/50 bg-blue-500/10">
+          <AlertCircle className="h-4 w-4 text-blue-500" />
+          <AlertDescription>
+            Your articles will be submitted for review before publishing. An editor or admin will review and approve them.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Tabs for different views */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+        <TabsList>
+          <TabsTrigger value="all">All</TabsTrigger>
+          {canReview && (
+            <TabsTrigger value="pending" className="relative">
+              Pending Review
+              {pendingCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center">
+                  {pendingCount}
+                </span>
+              )}
+            </TabsTrigger>
+          )}
+          <TabsTrigger value="published">Published</TabsTrigger>
+          <TabsTrigger value="draft">Drafts</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Filters */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4">
@@ -186,13 +374,15 @@ const AdminArticles = () => {
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-full sm:w-32">
+          <SelectTrigger className="w-full sm:w-40">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="published">Published</SelectItem>
+            <SelectItem value="pending_review">Pending Review</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
             <SelectItem value="scheduled">Scheduled</SelectItem>
           </SelectContent>
         </Select>
@@ -237,15 +427,16 @@ const AdminArticles = () => {
                     {article.author.name}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge className={
-                      article.status === 'published' ? 'bg-green-500/20 text-green-600 border-green-500/30' : 
-                      article.status === 'scheduled' ? 'bg-blue-500/20 text-blue-600 border-blue-500/30' :
-                      'bg-yellow-500/20 text-yellow-600 border-yellow-500/30'
-                    }>
-                      {article.status}
-                    </Badge>
-                    {article.isBreaking && (
-                      <Badge className="ml-1 bg-red-500/20 text-red-600 border-red-500/30">Breaking</Badge>
+                    <div className="flex flex-wrap gap-1">
+                      {getStatusBadge(article.status)}
+                      {article.isBreaking && (
+                        <Badge className="bg-red-500/20 text-red-600 border-red-500/30">Breaking</Badge>
+                      )}
+                    </div>
+                    {article.status === 'rejected' && article.reviewNote && (
+                      <p className="text-xs text-red-500 mt-1 line-clamp-1" title={article.reviewNote}>
+                        {article.reviewNote}
+                      </p>
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell">
@@ -258,6 +449,32 @@ const AdminArticles = () => {
                           <Eye className="h-4 w-4" />
                         </a>
                       </Button>
+                      
+                      {/* Review button for pending articles */}
+                      {canReview && article.status === 'pending_review' && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-orange-500"
+                          onClick={() => openReviewDialog(article)}
+                        >
+                          <Clock className="h-4 w-4" />
+                        </Button>
+                      )}
+                      
+                      {/* Submit for review button for drafts */}
+                      {!canPublishDirectly && article.status === 'draft' && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-blue-500"
+                          onClick={() => handleSubmitForReview(article)}
+                          title="Submit for Review"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      )}
+                      
                       <Button variant="ghost" size="icon" onClick={() => openEditDialog(article)}>
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -278,6 +495,57 @@ const AdminArticles = () => {
           </div>
         )}
       </div>
+
+      {/* Review Dialog */}
+      <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Review Article</DialogTitle>
+            <DialogDescription>
+              Review this article submission and approve or reject it.
+            </DialogDescription>
+          </DialogHeader>
+
+          {reviewingArticle && (
+            <div className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <h3 className="font-semibold mb-2">{reviewingArticle.title}</h3>
+                <p className="text-sm text-muted-foreground mb-2">{reviewingArticle.excerpt}</p>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>By {reviewingArticle.author.name}</span>
+                  <span>•</span>
+                  <Badge variant="outline" className="capitalize">{reviewingArticle.category}</Badge>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="reviewNote">Review Note (required for rejection)</Label>
+                <Textarea
+                  id="reviewNote"
+                  value={reviewNote}
+                  onChange={(e) => setReviewNote(e.target.value)}
+                  placeholder="Add feedback for the author..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setIsReviewDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleReject}>
+                  <XCircle className="mr-2 h-4 w-4" />
+                  Reject
+                </Button>
+                <Button onClick={handleApprove}>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Approve & Publish
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -340,19 +608,21 @@ const AdminArticles = () => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="author">Author *</Label>
-                <Select value={formData.authorId} onValueChange={(val) => setFormData({ ...formData, authorId: val })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {authors.map(author => (
-                      <SelectItem key={author.id} value={author.id}>{author.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {canEditAll && (
+                <div className="space-y-2">
+                  <Label htmlFor="author">Author *</Label>
+                  <Select value={formData.authorId} onValueChange={(val) => setFormData({ ...formData, authorId: val })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {authors.map(author => (
+                        <SelectItem key={author.id} value={author.id}>{author.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -398,36 +668,46 @@ const AdminArticles = () => {
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(val) => setFormData({ ...formData, status: val as any })}>
+                <Select value={formData.status} onValueChange={(val) => setFormData({ ...formData, status: val as ArticleStatus })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="published">Published</SelectItem>
-                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    {getAvailableStatuses().map(status => (
+                      <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="flex items-center gap-3 pt-6">
-                <Switch
-                  id="isBreaking"
-                  checked={formData.isBreaking}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isBreaking: checked })}
-                />
-                <Label htmlFor="isBreaking">Breaking News</Label>
-              </div>
+              {canSetBreaking && (
+                <div className="flex items-center gap-3 pt-6">
+                  <Switch
+                    id="isBreaking"
+                    checked={formData.isBreaking}
+                    onCheckedChange={(checked) => setFormData({ ...formData, isBreaking: checked })}
+                  />
+                  <Label htmlFor="isBreaking">Breaking News</Label>
+                </div>
+              )}
 
-              <div className="flex items-center gap-3 pt-6">
-                <Switch
-                  id="isFeatured"
-                  checked={formData.isFeatured}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isFeatured: checked })}
-                />
-                <Label htmlFor="isFeatured">Featured</Label>
-              </div>
+              {canSetFeatured && (
+                <div className="flex items-center gap-3 pt-6">
+                  <Switch
+                    id="isFeatured"
+                    checked={formData.isFeatured}
+                    onCheckedChange={(checked) => setFormData({ ...formData, isFeatured: checked })}
+                  />
+                  <Label htmlFor="isFeatured">Featured</Label>
+                </div>
+              )}
             </div>
+
+            {!canSetBreaking && !canSetFeatured && (
+              <p className="text-xs text-muted-foreground">
+                Note: Breaking News and Featured flags can only be set by editors and admins.
+              </p>
+            )}
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -435,7 +715,7 @@ const AdminArticles = () => {
               </Button>
               <Button type="submit">
                 <Save className="mr-2 h-4 w-4" />
-                {editingArticle ? 'Update Article' : 'Create Article'}
+                {editingArticle ? 'Update Article' : 'Save Article'}
               </Button>
             </div>
           </form>
