@@ -45,9 +45,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Editorial Section */}
-      <EditorialSection />
-
       {/* Reader Comments Section */}
       <HomepageComments />
 
@@ -65,6 +62,9 @@ const Index = () => {
       <LatestNews />
       <CategorySection category="technology" title="Technology" />
       <CategorySection category="economy" title="Economy & Business" />
+
+      {/* Editorial Section */}
+      <EditorialSection />
     </Layout>
   );
 };
