@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search, Image, Video, Trash2, ExternalLink, Upload, Filter, Grid, List } from 'lucide-react';
+import { Search, Image, Video, Trash2, ExternalLink, Upload, Filter, Grid, List, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Select,
@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useAdminAuth } from '@/context/AdminAuthContext';
 
 interface MediaItem {
   id: string;
@@ -32,11 +33,17 @@ const initialMedia: MediaItem[] = [
 ];
 
 const AdminMedia = () => {
+  const { hasPermission, currentUser } = useAdminAuth();
   const [mediaList, setMediaList] = useState<MediaItem[]>(initialMedia);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+
+  const canUpload = hasPermission('uploadMedia');
+  const canViewAll = hasPermission('viewAllMedia');
+  const canDeleteAll = hasPermission('deleteAllMedia');
+  const canDeleteOwn = hasPermission('deleteOwnMedia');
 
   const filteredMedia = mediaList.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -45,6 +52,10 @@ const AdminMedia = () => {
   });
 
   const handleDelete = (id: string) => {
+    if (!canDeleteAll && !canDeleteOwn) {
+      toast.error('You do not have permission to delete media');
+      return;
+    }
     if (window.confirm('Are you sure you want to delete this media?')) {
       setMediaList(prev => prev.filter(item => item.id !== id));
       toast.success('Media deleted successfully!');
@@ -52,6 +63,10 @@ const AdminMedia = () => {
   };
 
   const handleBulkDelete = () => {
+    if (!canDeleteAll) {
+      toast.error('You do not have permission to bulk delete media');
+      return;
+    }
     if (selectedItems.length === 0) {
       toast.error('No items selected');
       return;
@@ -77,11 +92,18 @@ const AdminMedia = () => {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h1 className="font-display text-2xl font-bold text-foreground">Media Library</h1>
-        <Button>
-          <Upload className="mr-2 h-4 w-4" />
-          Upload Media
-        </Button>
+        <div>
+          <h1 className="font-display text-2xl font-bold text-foreground">Media Library</h1>
+          {!canViewAll && (
+            <p className="text-sm text-muted-foreground mt-1">Showing your uploaded media only</p>
+          )}
+        </div>
+        {canUpload && (
+          <Button>
+            <Upload className="mr-2 h-4 w-4" />
+            Upload Media
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -124,7 +146,7 @@ const AdminMedia = () => {
       </div>
 
       {/* Bulk Actions */}
-      {selectedItems.length > 0 && (
+      {selectedItems.length > 0 && canDeleteAll && (
         <div className="mb-4 flex items-center gap-4 p-3 rounded-lg bg-muted">
           <span className="text-sm text-foreground">{selectedItems.length} items selected</span>
           <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
@@ -153,24 +175,28 @@ const AdminMedia = () => {
                   alt={item.name}
                   className="h-full w-full object-cover"
                 />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors">
-                  <div className="absolute top-2 left-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.includes(item.id)}
-                      onChange={() => toggleSelection(item.id)}
-                      className="h-4 w-4 rounded"
-                    />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors">
+                    {canDeleteAll && (
+                      <div className="absolute top-2 left-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.includes(item.id)}
+                          onChange={() => toggleSelection(item.id)}
+                          className="h-4 w-4 rounded"
+                        />
+                      </div>
+                    )}
+                    <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => copyUrl(item.url)}>
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                      {(canDeleteAll || canDeleteOwn) && (
+                        <Button size="icon" variant="destructive" className="h-8 w-8" onClick={() => handleDelete(item.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => copyUrl(item.url)}>
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                    <Button size="icon" variant="destructive" className="h-8 w-8" onClick={() => handleDelete(item.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
                 <Badge className="absolute top-2 right-2" variant="secondary">
                   {item.type === 'image' ? <Image className="h-3 w-3" /> : <Video className="h-3 w-3" />}
                 </Badge>
@@ -187,20 +213,22 @@ const AdminMedia = () => {
           <table className="w-full">
             <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left w-12">
-                  <input
-                    type="checkbox"
-                    checked={selectedItems.length === filteredMedia.length && filteredMedia.length > 0}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedItems(filteredMedia.map(i => i.id));
-                      } else {
-                        setSelectedItems([]);
-                      }
-                    }}
-                    className="h-4 w-4 rounded"
-                  />
-                </th>
+                {canDeleteAll && (
+                  <th className="px-4 py-3 text-left w-12">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.length === filteredMedia.length && filteredMedia.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedItems(filteredMedia.map(i => i.id));
+                        } else {
+                          setSelectedItems([]);
+                        }
+                      }}
+                      className="h-4 w-4 rounded"
+                    />
+                  </th>
+                )}
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Preview</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Type</th>
@@ -211,14 +239,16 @@ const AdminMedia = () => {
             <tbody className="divide-y divide-border">
               {filteredMedia.map((item) => (
                 <tr key={item.id} className="hover:bg-muted/50">
-                  <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.includes(item.id)}
-                      onChange={() => toggleSelection(item.id)}
-                      className="h-4 w-4 rounded"
-                    />
-                  </td>
+                  {canDeleteAll && (
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(item.id)}
+                        onChange={() => toggleSelection(item.id)}
+                        className="h-4 w-4 rounded"
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     <img src={item.url} alt="" className="h-10 w-14 rounded object-cover" />
                   </td>
@@ -232,9 +262,11 @@ const AdminMedia = () => {
                       <Button size="icon" variant="ghost" onClick={() => copyUrl(item.url)}>
                         <ExternalLink className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="text-destructive" onClick={() => handleDelete(item.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {(canDeleteAll || canDeleteOwn) && (
+                        <Button size="icon" variant="ghost" className="text-destructive" onClick={() => handleDelete(item.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Edit, Trash2, Shield, ShieldCheck, ShieldAlert, UserCheck, UserX } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Shield, ShieldCheck, ShieldAlert, UserCheck, UserX, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -11,8 +11,10 @@ import { adminUsers, rolePermissions } from '@/data/adminMockData';
 import { AdminUser, UserRole } from '@/types/news';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { useAdminAuth } from '@/context/AdminAuthContext';
 
 const AdminUsers = () => {
+  const { hasPermission, currentUser } = useAdminAuth();
   const [users, setUsers] = useState<AdminUser[]>(adminUsers);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -24,6 +26,21 @@ const AdminUsers = () => {
     role: 'author' as UserRole,
     isActive: true
   });
+
+  const canManageUsers = hasPermission('manageUsers');
+
+  // If user doesn't have permission, show restricted view
+  if (!canManageUsers) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Lock className="h-16 w-16 text-muted-foreground mb-4" />
+        <h1 className="font-display text-2xl font-bold text-foreground mb-2">Access Restricted</h1>
+        <p className="text-muted-foreground max-w-md">
+          You don't have permission to manage users. Only administrators can access this section.
+        </p>
+      </div>
+    );
+  }
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

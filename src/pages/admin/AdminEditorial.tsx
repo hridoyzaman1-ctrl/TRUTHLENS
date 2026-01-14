@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Save, Pen, MessageCircle, GraduationCap, Eye, Edit, Trash2, Plus, FileText, Download } from 'lucide-react';
+import { Save, Pen, MessageCircle, GraduationCap, Eye, Edit, Trash2, Plus, FileText, Download, Lock } from 'lucide-react';
+import { useAdminAuth } from '@/context/AdminAuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -46,10 +47,26 @@ const initialInternshipSettings = {
 };
 
 const AdminEditorial = () => {
+  const { hasPermission } = useAdminAuth();
   const [editorialSettings, setEditorialSettings] = useState(initialEditorialSettings);
   const [internshipSettings, setInternshipSettings] = useState(initialInternshipSettings);
   const [applications, setApplications] = useState<InternshipApplication[]>(mockApplications);
   const [selectedApplication, setSelectedApplication] = useState<InternshipApplication | null>(null);
+
+  const canManageEditorial = hasPermission('manageEditorial');
+
+  // If user doesn't have permission, show restricted view
+  if (!canManageEditorial) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Lock className="h-16 w-16 text-muted-foreground mb-4" />
+        <h1 className="font-display text-2xl font-bold text-foreground mb-2">Access Restricted</h1>
+        <p className="text-muted-foreground max-w-md">
+          You don't have permission to manage editorial and internship settings. Only administrators can access this section.
+        </p>
+      </div>
+    );
+  }
   
   // Internship content management
   const [benefits, setBenefits] = useState<InternshipBenefit[]>(defaultBenefits);
