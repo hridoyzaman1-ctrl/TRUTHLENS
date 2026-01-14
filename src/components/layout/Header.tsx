@@ -13,8 +13,8 @@ export const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      {/* Top Bar */}
-      <div className="border-b border-border bg-primary">
+      {/* Top Bar - Hidden on mobile for cleaner look */}
+      <div className="border-b border-border bg-primary hidden sm:block">
         <div className="container mx-auto flex h-8 items-center justify-between px-4 text-xs text-primary-foreground">
           <span className="font-medium">Authentic Stories. Unbiased Voices.</span>
           <div className="flex items-center gap-4">
@@ -36,9 +36,13 @@ export const Header = () => {
             {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
 
-          {/* Logo */}
+          {/* Logo - Fixed sizing for mobile */}
           <Link to="/" className="flex items-center">
-            <img src={logo} alt="TruthLens" className="h-12 w-auto" />
+            <img 
+              src={logo} 
+              alt="TruthLens" 
+              className="h-8 w-auto sm:h-10 md:h-12 object-contain" 
+            />
           </Link>
 
           {/* Desktop Navigation */}

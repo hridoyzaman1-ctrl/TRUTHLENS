@@ -21,6 +21,8 @@ import AdminCategories from "./pages/admin/AdminCategories";
 import AdminMedia from "./pages/admin/AdminMedia";
 import AdminJobs from "./pages/admin/AdminJobs";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminFeatured from "./pages/admin/AdminFeatured";
 
 const queryClient = new QueryClient();
 
@@ -43,9 +45,11 @@ const App = () => (
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
+              <Route path="featured" element={<AdminFeatured />} />
               <Route path="articles" element={<AdminArticles />} />
               <Route path="categories" element={<AdminCategories />} />
               <Route path="media" element={<AdminMedia />} />
+              <Route path="users" element={<AdminUsers />} />
               <Route path="jobs" element={<AdminJobs />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>

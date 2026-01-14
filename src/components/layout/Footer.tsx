@@ -33,9 +33,8 @@ export const Footer = () => {
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div>
-            <Link to="/" className="flex items-center gap-2">
-              <img src={logo} alt="TruthLens" className="h-10 w-auto" />
-              <span className="font-display text-xl font-bold text-foreground">TruthLens</span>
+            <Link to="/" className="flex items-center">
+              <img src={logo} alt="TruthLens" className="h-10 w-auto object-contain" />
             </Link>
             <p className="mt-4 text-sm text-muted-foreground">
               Authentic Stories. Unbiased Voices. Your trusted source for fact-based journalism.
