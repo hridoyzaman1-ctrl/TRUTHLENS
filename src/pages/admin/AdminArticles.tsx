@@ -27,6 +27,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAdminAuth } from '@/context/AdminAuthContext';
+import { useActivityLog } from '@/context/ActivityLogContext';
 
 type ArticleStatus = 'draft' | 'pending_review' | 'published' | 'rejected' | 'scheduled';
 
@@ -39,6 +40,7 @@ interface ExtendedArticle extends Omit<Article, 'status'> {
 
 const AdminArticles = () => {
   const { currentUser, hasPermission } = useAdminAuth();
+  const { logActivity } = useActivityLog();
   
   // Extend articles with proper status
   const [articlesList, setArticlesList] = useState<ExtendedArticle[]>(
@@ -181,6 +183,11 @@ const AdminArticles = () => {
             }
           : a
       ));
+      logActivity('update', 'article', {
+        resourceId: editingArticle.id,
+        resourceName: formData.title,
+        details: 'Updated article content'
+      });
       toast.success('Article updated successfully!');
     } else {
       // Create new article
@@ -205,6 +212,11 @@ const AdminArticles = () => {
         submittedBy: currentUser?.id
       };
       setArticlesList(prev => [newArticle, ...prev]);
+      logActivity('create', 'article', {
+        resourceId: newArticle.id,
+        resourceName: formData.title,
+        details: `Created new article in ${formData.category} category`
+      });
       toast.success('Article created successfully!');
     }
 
@@ -217,6 +229,11 @@ const AdminArticles = () => {
         ? { ...a, status: 'pending_review' as ArticleStatus, updatedAt: new Date() }
         : a
     ));
+    logActivity('submit_review', 'article', {
+      resourceId: article.id,
+      resourceName: article.title,
+      details: 'Submitted article for editorial review'
+    });
     toast.success('Article submitted for review!');
   };
 
@@ -235,6 +252,11 @@ const AdminArticles = () => {
           }
         : a
     ));
+    logActivity('approve', 'article', {
+      resourceId: reviewingArticle.id,
+      resourceName: reviewingArticle.title,
+      details: reviewNote ? `Approved with note: ${reviewNote}` : 'Approved and published'
+    });
     setIsReviewDialogOpen(false);
     toast.success('Article approved and published!');
   };
@@ -256,6 +278,11 @@ const AdminArticles = () => {
           }
         : a
     ));
+    logActivity('reject', 'article', {
+      resourceId: reviewingArticle.id,
+      resourceName: reviewingArticle.title,
+      details: `Rejected: ${reviewNote}`
+    });
     setIsReviewDialogOpen(false);
     toast.success('Article rejected');
   };
@@ -272,6 +299,11 @@ const AdminArticles = () => {
     
     if (window.confirm('Are you sure you want to delete this article?')) {
       setArticlesList(prev => prev.filter(a => a.id !== id));
+      logActivity('delete', 'article', {
+        resourceId: id,
+        resourceName: article.title,
+        details: 'Permanently deleted article'
+      });
       toast.success('Article deleted successfully!');
     }
   };

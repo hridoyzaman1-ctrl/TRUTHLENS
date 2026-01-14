@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { AdminAuthProvider } from "@/context/AdminAuthContext";
+import { ActivityLogProvider } from "@/context/ActivityLogContext";
 import ScrollToTop from "@/components/ScrollToTop";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -32,6 +33,7 @@ import AdminSections from "./pages/admin/AdminSections";
 import AdminMenu from "./pages/admin/AdminMenu";
 import AdminComments from "./pages/admin/AdminComments";
 import AdminContactInfo from "./pages/admin/AdminContactInfo";
+import AdminActivityLog from "./pages/admin/AdminActivityLog";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +41,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <AdminAuthProvider>
+        <ActivityLogProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -70,11 +73,13 @@ const App = () => (
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="jobs" element={<AdminJobs />} />
                 <Route path="settings" element={<AdminSettings />} />
+                <Route path="activity" element={<AdminActivityLog />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
+        </ActivityLogProvider>
       </AdminAuthProvider>
     </ThemeProvider>
   </QueryClientProvider>
