@@ -12,9 +12,11 @@ import { AdminUser, UserRole } from '@/types/news';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAdminAuth } from '@/context/AdminAuthContext';
+import { useActivityLog } from '@/context/ActivityLogContext';
 
 const AdminUsers = () => {
   const { hasPermission, currentUser } = useAdminAuth();
+  const { logActivity } = useActivityLog();
   const [users, setUsers] = useState<AdminUser[]>(adminUsers);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -78,6 +80,11 @@ const AdminUsers = () => {
           ? { ...u, ...formData, permissions: rolePermissions[formData.role] || [] }
           : u
       ));
+      logActivity('update', 'user', {
+        resourceId: editingUser.id,
+        resourceName: formData.name,
+        details: `Updated user role to ${formData.role}`
+      });
       toast.success('User updated successfully');
     } else {
       const newUser: AdminUser = {
@@ -91,6 +98,11 @@ const AdminUsers = () => {
         createdAt: new Date()
       };
       setUsers([...users, newUser]);
+      logActivity('create', 'user', {
+        resourceId: newUser.id,
+        resourceName: formData.name,
+        details: `Created new ${formData.role} user`
+      });
       toast.success('User created successfully');
     }
     setIsDialogOpen(false);
@@ -109,14 +121,27 @@ const AdminUsers = () => {
   };
 
   const handleDeleteUser = (id: string) => {
+    const user = users.find(u => u.id === id);
     setUsers(users.filter(u => u.id !== id));
+    logActivity('delete', 'user', {
+      resourceId: id,
+      resourceName: user?.name,
+      details: 'Removed user from system'
+    });
     toast.success('User removed successfully');
   };
 
   const toggleUserStatus = (id: string) => {
+    const user = users.find(u => u.id === id);
+    const newStatus = !user?.isActive;
     setUsers(users.map(u => 
-      u.id === id ? { ...u, isActive: !u.isActive } : u
+      u.id === id ? { ...u, isActive: newStatus } : u
     ));
+    logActivity('toggle', 'user', {
+      resourceId: id,
+      resourceName: user?.name,
+      details: newStatus ? 'Activated user account' : 'Deactivated user account'
+    });
   };
 
   const resetForm = () => {

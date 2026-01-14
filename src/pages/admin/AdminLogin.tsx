@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { useRateLimiter } from '@/hooks/useRateLimiter';
 import { useAdminAuth } from '@/context/AdminAuthContext';
+import { useActivityLog } from '@/context/ActivityLogContext';
 import { ROLE_DISPLAY } from '@/types/admin';
 import truthLensLogo from '@/assets/truthlens-logo.png';
 
@@ -44,6 +45,7 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isAuthenticated } = useAdminAuth();
+  const { logActivity } = useActivityLog();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -112,6 +114,12 @@ const AdminLogin = () => {
     
     if (success) {
       rateLimiter.recordAttempt(true);
+      // Log activity after successful login
+      setTimeout(() => {
+        logActivity('login', 'session', {
+          details: `Logged in from ${navigator.userAgent.includes('Mobile') ? 'mobile' : 'desktop'} device`
+        });
+      }, 100);
       toast.success('Welcome back!');
       
       // Redirect to intended page or admin dashboard

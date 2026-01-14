@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAdminAuth } from '@/context/AdminAuthContext';
+import { useActivityLog } from '@/context/ActivityLogContext';
 
 interface MediaItem {
   id: string;
@@ -34,6 +35,7 @@ const initialMedia: MediaItem[] = [
 
 const AdminMedia = () => {
   const { hasPermission, currentUser } = useAdminAuth();
+  const { logActivity } = useActivityLog();
   const [mediaList, setMediaList] = useState<MediaItem[]>(initialMedia);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
@@ -56,8 +58,14 @@ const AdminMedia = () => {
       toast.error('You do not have permission to delete media');
       return;
     }
+    const item = mediaList.find(m => m.id === id);
     if (window.confirm('Are you sure you want to delete this media?')) {
       setMediaList(prev => prev.filter(item => item.id !== id));
+      logActivity('delete', 'media', {
+        resourceId: id,
+        resourceName: item?.name,
+        details: 'Deleted media file'
+      });
       toast.success('Media deleted successfully!');
     }
   };
@@ -72,7 +80,11 @@ const AdminMedia = () => {
       return;
     }
     if (window.confirm(`Are you sure you want to delete ${selectedItems.length} items?`)) {
+      const count = selectedItems.length;
       setMediaList(prev => prev.filter(item => !selectedItems.includes(item.id)));
+      logActivity('bulk_delete', 'media', {
+        details: `Bulk deleted ${count} media files`
+      });
       setSelectedItems([]);
       toast.success('Media deleted successfully!');
     }

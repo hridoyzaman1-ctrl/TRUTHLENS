@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, FileText, FolderOpen, Image, Users, Briefcase, Settings, 
   Menu, X, LogOut, Star, Pen, LayoutGrid, Navigation, MessageSquare, Building,
-  Shield, ChevronDown
+  Shield, ChevronDown, Activity
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +42,7 @@ const allNavItems: NavItem[] = [
   { icon: Image, label: 'Media', path: '/admin/media', requiredPermission: 'uploadMedia' },
   { icon: Users, label: 'Users', path: '/admin/users', requiredPermission: 'manageUsers' },
   { icon: Briefcase, label: 'Jobs', path: '/admin/jobs', requiredPermission: 'manageJobs' },
+  { icon: Activity, label: 'Activity Log', path: '/admin/activity', requiredPermission: 'manageSettings' },
   { icon: Settings, label: 'Settings', path: '/admin/settings', requiredPermission: 'manageSettings' },
 ];
 

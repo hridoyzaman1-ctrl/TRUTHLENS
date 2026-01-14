@@ -15,6 +15,7 @@ import {
   Lock
 } from 'lucide-react';
 import { useAdminAuth } from '@/context/AdminAuthContext';
+import { useActivityLog } from '@/context/ActivityLogContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -182,6 +183,7 @@ const initialComments: Comment[] = [
 
 const AdminComments = () => {
   const { hasPermission } = useAdminAuth();
+  const { logActivity } = useActivityLog();
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -231,34 +233,61 @@ const AdminComments = () => {
   });
 
   const handleDelete = (commentId: string) => {
+    const comment = comments.find(c => c.id === commentId);
     setComments(comments.filter(c => c.id !== commentId));
+    logActivity('delete', 'comment', {
+      resourceId: commentId,
+      resourceName: comment?.author,
+      details: `Deleted comment on "${comment?.articleTitle}"`
+    });
     toast.success('Comment deleted successfully');
   };
 
   const handleBulkDelete = (status: string) => {
     const count = comments.filter(c => c.status === status).length;
     setComments(comments.filter(c => c.status !== status));
+    logActivity('bulk_delete', 'comment', {
+      details: `Bulk deleted ${count} ${status} comments`
+    });
     toast.success(`${count} ${status} comments deleted`);
   };
 
   const handleApprove = (commentId: string) => {
+    const comment = comments.find(c => c.id === commentId);
     setComments(comments.map(c => 
       c.id === commentId ? { ...c, status: 'approved' as const } : c
     ));
+    logActivity('approve', 'comment', {
+      resourceId: commentId,
+      resourceName: comment?.author,
+      details: `Approved comment on "${comment?.articleTitle}"`
+    });
     toast.success('Comment approved');
   };
 
   const handleFlag = (commentId: string) => {
+    const comment = comments.find(c => c.id === commentId);
     setComments(comments.map(c => 
       c.id === commentId ? { ...c, status: 'flagged' as const } : c
     ));
+    logActivity('flag', 'comment', {
+      resourceId: commentId,
+      resourceName: comment?.author,
+      details: `Flagged comment for review`
+    });
     toast.success('Comment flagged for review');
   };
 
   const handleMarkSpam = (commentId: string) => {
+    const comment = comments.find(c => c.id === commentId);
     setComments(comments.map(c => 
       c.id === commentId ? { ...c, status: 'spam' as const } : c
     ));
+    logActivity('flag', 'comment', {
+      resourceId: commentId,
+      resourceName: comment?.author,
+      details: `Marked comment as spam`
+    });
     toast.success('Comment marked as spam');
   };
 
