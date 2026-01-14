@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { articles } from '@/data/mockData';
 import { PlayCircle, Video, Clock, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { VideoPlayerModal } from './VideoPlayerModal';
 import { formatDistanceToNow } from 'date-fns';
 import { Article } from '@/types/news';
@@ -70,6 +71,45 @@ const VideoCard = ({ article, onPlay }: VideoCardProps) => (
 export const VideoSection = () => {
   const videoArticles = articles.filter(a => a.hasVideo && a.videoUrl).slice(0, 4);
   const [selectedVideo, setSelectedVideo] = useState<Article | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Simulate loading
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 700);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (videoArticles.length === 0 && !isLoading) return null;
+
+  if (isLoading) {
+    return (
+      <section className="py-8 bg-gradient-to-br from-primary/5 to-accent/5 overflow-hidden">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center gap-2 mb-6">
+            <Skeleton className="h-8 w-8 rounded-lg" />
+            <Skeleton className="h-7 w-36" />
+          </div>
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="rounded-xl overflow-hidden bg-card border border-border">
+                <div className="relative">
+                  <Skeleton className="aspect-video w-full" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Skeleton className="h-14 w-14 rounded-full" />
+                  </div>
+                </div>
+                <div className="p-4 space-y-2">
+                  <Skeleton className="h-5 w-full" />
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (videoArticles.length === 0) return null;
 
