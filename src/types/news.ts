@@ -7,7 +7,9 @@ export type Category =
   | 'culture' 
   | 'technology' 
   | 'editorial' 
-  | 'untold-stories';
+  | 'untold-stories'
+  | 'sports'
+  | 'entertainment';
 
 export type UserRole = 'admin' | 'editor' | 'reporter';
 
@@ -21,6 +23,8 @@ export interface Article {
   author: Author;
   featuredImage: string;
   videoUrl?: string;
+  hasVideo?: boolean;
+  showOnHomepage?: boolean;
   tags: string[];
   isBreaking: boolean;
   isFeatured: boolean;

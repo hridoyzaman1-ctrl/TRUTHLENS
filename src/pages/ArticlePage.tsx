@@ -27,14 +27,26 @@ const ArticlePage = () => {
 
   return (
     <Layout>
-      {/* Hero Image */}
+      {/* Hero Image or Video */}
       <div className="relative h-64 md:h-96 lg:h-[500px]">
-        <img
-          src={article.featuredImage}
-          alt={article.title}
-          className="h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+        {article.hasVideo && article.videoUrl ? (
+          <iframe
+            src={article.videoUrl}
+            title={article.title}
+            className="h-full w-full object-cover"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        ) : (
+          <>
+            <img
+              src={article.featuredImage}
+              alt={article.title}
+              className="h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+          </>
+        )}
       </div>
 
       <article className="container mx-auto px-4 -mt-20 relative z-10">

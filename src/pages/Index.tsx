@@ -4,6 +4,9 @@ import { HeroSection } from '@/components/news/HeroSection';
 import { LatestNews } from '@/components/news/LatestNews';
 import { CategorySection } from '@/components/news/CategorySection';
 import { TrendingSidebar } from '@/components/news/TrendingSidebar';
+import { EditorialSection } from '@/components/news/EditorialSection';
+import { VideoSection } from '@/components/news/VideoSection';
+import { NewsletterSignup } from '@/components/news/NewsletterSignup';
 import { articles } from '@/data/mockData';
 import { ArticleCard } from '@/components/news/ArticleCard';
 
@@ -12,6 +15,9 @@ const Index = () => {
     <Layout>
       <BreakingNewsTicker />
       <HeroSection />
+      
+      {/* Video Stories Section */}
+      <VideoSection />
       
       <section className="py-8">
         <div className="container mx-auto px-4">
@@ -31,12 +37,23 @@ const Index = () => {
             {/* Sidebar */}
             <div className="space-y-6">
               <TrendingSidebar />
+              <NewsletterSignup />
             </div>
           </div>
         </div>
       </section>
 
+      {/* Editorial Section */}
+      <EditorialSection />
+
       <CategorySection category="untold-stories" title="Untold Stories" />
+      
+      {/* Sports Section */}
+      <CategorySection category="sports" title="Sports" />
+      
+      {/* Entertainment Section */}
+      <CategorySection category="entertainment" title="Entertainment" />
+
       <LatestNews />
       <CategorySection category="technology" title="Technology" />
       <CategorySection category="economy" title="Economy & Business" />

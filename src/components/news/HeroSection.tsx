@@ -1,28 +1,50 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Clock, Eye } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Clock, Eye, ChevronLeft, ChevronRight, Pause, Play, PlayCircle } from 'lucide-react';
 import { articles } from '@/data/mockData';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 
 export const HeroSection = () => {
-  const featuredArticles = articles.filter(a => a.isFeatured).slice(0, 4);
-  const mainArticle = featuredArticles[0];
-  const sideArticles = featuredArticles.slice(1, 4);
+  const featuredArticles = articles.filter(a => a.isFeatured && a.showOnHomepage).slice(0, 6);
+  const sideArticles = articles.filter(a => !a.isFeatured).slice(0, 4);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
-  if (!mainArticle) return null;
+  const goToNext = useCallback(() => {
+    setCurrentIndex((prev) => (prev + 1) % featuredArticles.length);
+  }, [featuredArticles.length]);
+
+  const goToPrev = useCallback(() => {
+    setCurrentIndex((prev) => (prev - 1 + featuredArticles.length) % featuredArticles.length);
+  }, [featuredArticles.length]);
+
+  useEffect(() => {
+    if (featuredArticles.length <= 1 || !isAutoPlaying) return;
+    
+    const interval = setInterval(goToNext, 6000);
+    return () => clearInterval(interval);
+  }, [featuredArticles.length, isAutoPlaying, goToNext]);
+
+  if (featuredArticles.length === 0) return null;
+
+  const currentArticle = featuredArticles[currentIndex];
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
       national: 'bg-blue-500',
       international: 'bg-purple-500',
       economy: 'bg-amber-500',
-      environment: 'bg-green-500',
+      environment: 'bg-emerald-500',
       technology: 'bg-cyan-500',
       culture: 'bg-pink-500',
-      editorial: 'bg-gray-500',
+      editorial: 'bg-slate-500',
       society: 'bg-orange-500',
-      'untold-stories': 'bg-red-500',
+      'untold-stories': 'bg-red-600',
+      sports: 'bg-green-500',
+      entertainment: 'bg-fuchsia-500',
     };
     return colors[category] || 'bg-primary';
   };
@@ -31,49 +53,124 @@ export const HeroSection = () => {
     <section className="py-6 md:py-8">
       <div className="container mx-auto px-4">
         <div className="grid gap-4 lg:grid-cols-3 lg:gap-6">
-          {/* Main Featured Article */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="lg:col-span-2"
-          >
-            <Link to={`/article/${mainArticle.slug}`} className="group relative block overflow-hidden rounded-xl">
-              <div className="aspect-[16/10] lg:aspect-[16/9]">
-                <img
-                  src={mainArticle.featuredImage}
-                  alt={mainArticle.title}
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 lg:p-8">
-                <Badge className={`${getCategoryColor(mainArticle.category)} mb-3 text-white border-0`}>
-                  {mainArticle.category.replace('-', ' ')}
-                </Badge>
-                <h2 className="font-display text-xl font-bold text-white md:text-2xl lg:text-3xl xl:text-4xl">
-                  {mainArticle.title}
-                </h2>
-                <p className="mt-2 line-clamp-2 text-sm text-white/80 md:text-base">
-                  {mainArticle.excerpt}
-                </p>
-                <div className="mt-4 flex items-center gap-4 text-xs text-white/70">
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {formatDistanceToNow(mainArticle.publishedAt, { addSuffix: true })}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
-                    {mainArticle.views.toLocaleString()} views
-                  </span>
-                  <span>By {mainArticle.author.name}</span>
-                </div>
-              </div>
-            </Link>
-          </motion.div>
+          {/* Main Featured Article with Auto-Swipe */}
+          <div className="lg:col-span-2 relative">
+            <div className="relative overflow-hidden rounded-xl">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentIndex}
+                  initial={{ opacity: 0, scale: 1.05 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <Link to={`/article/${currentArticle.slug}`} className="group relative block">
+                    <div className="aspect-[16/10] lg:aspect-[16/9]">
+                      <img
+                        src={currentArticle.featuredImage}
+                        alt={currentArticle.title}
+                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        loading="eager"
+                      />
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                    
+                    {/* Video indicator */}
+                    {currentArticle.hasVideo && (
+                      <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/60 px-3 py-1.5 rounded-full">
+                        <PlayCircle className="h-4 w-4 text-white" />
+                        <span className="text-xs font-medium text-white">Video</span>
+                      </div>
+                    )}
+
+                    <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 lg:p-8">
+                      <Badge className={`${getCategoryColor(currentArticle.category)} mb-3 text-white border-0 uppercase tracking-wide text-xs`}>
+                        {currentArticle.category.replace('-', ' ')}
+                      </Badge>
+                      <h2 className="font-display text-xl font-bold text-white md:text-2xl lg:text-3xl xl:text-4xl leading-tight">
+                        {currentArticle.title}
+                      </h2>
+                      <p className="mt-2 line-clamp-2 text-sm text-white/80 md:text-base max-w-3xl">
+                        {currentArticle.excerpt}
+                      </p>
+                      <div className="mt-4 flex items-center gap-4 text-xs text-white/70">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {formatDistanceToNow(currentArticle.publishedAt, { addSuffix: true })}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Eye className="h-3 w-3" />
+                          {currentArticle.views.toLocaleString()} views
+                        </span>
+                        <span>By {currentArticle.author.name}</span>
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Navigation Controls */}
+              {featuredArticles.length > 1 && (
+                <>
+                  {/* Arrows */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={goToPrev}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-black/40 text-white hover:bg-black/60 backdrop-blur-sm"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={goToNext}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-black/40 text-white hover:bg-black/60 backdrop-blur-sm"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+
+                  {/* Bottom Controls */}
+                  <div className="absolute bottom-4 right-4 md:bottom-6 md:right-6 flex items-center gap-2">
+                    {/* Dots */}
+                    <div className="flex gap-1.5">
+                      {featuredArticles.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setCurrentIndex(idx)}
+                          className={`h-2 w-2 rounded-full transition-all duration-300 ${
+                            idx === currentIndex 
+                              ? 'bg-white w-6' 
+                              : 'bg-white/50 hover:bg-white/70'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    
+                    {/* Play/Pause */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setIsAutoPlaying(!isAutoPlaying)}
+                      className="h-8 w-8 rounded-full bg-black/40 text-white hover:bg-black/60 backdrop-blur-sm"
+                    >
+                      {isAutoPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                    </Button>
+                  </div>
+
+                  {/* Slide Counter */}
+                  <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1">
+                    <span className="text-xs text-white font-medium">
+                      {currentIndex + 1} / {featuredArticles.length}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
 
           {/* Side Articles */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {sideArticles.map((article, index) => (
               <motion.div
                 key={article.id}
@@ -83,20 +180,26 @@ export const HeroSection = () => {
               >
                 <Link
                   to={`/article/${article.slug}`}
-                  className="group flex gap-4 rounded-lg bg-card p-3 transition-colors hover:bg-muted"
+                  className="group flex gap-3 rounded-lg bg-card p-3 transition-all hover:bg-muted hover:shadow-md border border-transparent hover:border-border"
                 >
-                  <div className="h-20 w-28 flex-shrink-0 overflow-hidden rounded-md md:h-24 md:w-32">
+                  <div className="h-20 w-28 flex-shrink-0 overflow-hidden rounded-md md:h-20 md:w-28 relative">
                     <img
                       src={article.featuredImage}
                       alt={article.title}
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
                     />
+                    {article.hasVideo && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                        <PlayCircle className="h-6 w-6 text-white" />
+                      </div>
+                    )}
                   </div>
-                  <div className="flex flex-col justify-center">
-                    <Badge variant="outline" className="mb-1 w-fit text-[10px]">
+                  <div className="flex flex-col justify-center flex-1 min-w-0">
+                    <Badge variant="outline" className={`mb-1 w-fit text-[10px] ${getCategoryColor(article.category)} text-white border-0`}>
                       {article.category.replace('-', ' ')}
                     </Badge>
-                    <h3 className="line-clamp-2 font-display text-sm font-semibold text-foreground md:text-base">
+                    <h3 className="line-clamp-2 font-display text-sm font-semibold text-foreground md:text-sm group-hover:text-primary transition-colors">
                       {article.title}
                     </h3>
                     <span className="mt-1 text-xs text-muted-foreground">
