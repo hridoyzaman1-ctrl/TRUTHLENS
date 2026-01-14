@@ -56,13 +56,19 @@ export const Header = () => {
                 {category.name}
               </Link>
             ))}
-            <Link
-              to="/category/untold-stories"
-              className="px-3 py-2 text-sm font-semibold text-accent transition-colors hover:text-accent/80"
-            >
-              Untold Stories
-            </Link>
-          </nav>
+              <Link
+                to="/category/untold-stories"
+                className="px-3 py-2 text-sm font-semibold text-accent transition-colors hover:text-accent/80"
+              >
+                Untold Stories
+              </Link>
+              <Link
+                to="/internship"
+                className="px-3 py-2 text-sm font-semibold text-primary transition-colors hover:text-primary/80 flex items-center gap-1"
+              >
+                🎓 Internship
+              </Link>
+            </nav>
 
           {/* Actions */}
           <div className="flex items-center gap-2">
