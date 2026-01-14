@@ -21,9 +21,9 @@ export const Header = () => {
     .filter(item => item.isVisible)
     .sort((a, b) => a.order - b.order);
 
-  // Show first 5 items in main nav, rest in "More" dropdown
-  const mainNavItems = visibleMenuItems.slice(0, 5);
-  const moreNavItems = visibleMenuItems.slice(5);
+  // Items explicitly marked for main nav, rest go to "More"
+  const mainNavItems = visibleMenuItems.filter(item => item.showInMainNav === true);
+  const moreNavItems = visibleMenuItems.filter(item => item.showInMainNav !== true);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

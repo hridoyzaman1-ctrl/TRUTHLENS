@@ -18,6 +18,7 @@ export interface MenuItem {
   order: number;
   highlight?: boolean;
   icon?: string;
+  showInMainNav?: boolean; // If true, shows in main nav; if false, shows in "More" dropdown
 }
 
 export type UserRole = 'admin' | 'editor' | 'journalist' | 'author' | 'reporter';
