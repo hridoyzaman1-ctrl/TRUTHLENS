@@ -157,57 +157,78 @@ export const Header = () => {
         )}
       </AnimatePresence>
 
-      {/* Mobile Menu - Shows ALL items */}
+      {/* Mobile Menu - Shows ALL items with improved styling */}
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="absolute top-full left-0 right-0 border-t border-border lg:hidden overflow-hidden bg-background shadow-lg z-50"
+            className="absolute top-full left-0 right-0 lg:hidden overflow-hidden z-50"
           >
-            <nav className="container mx-auto flex flex-col px-4 py-4 max-h-[70vh] overflow-y-auto">
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-                Categories
+            {/* Overlay backdrop */}
+            <div className="absolute inset-0 bg-black/20" onClick={() => setIsMenuOpen(false)} />
+            
+            {/* Menu container with border and shadow */}
+            <nav className="relative mx-3 my-2 flex flex-col bg-card border-2 border-border rounded-xl shadow-2xl max-h-[70vh] overflow-y-auto">
+              {/* Categories section */}
+              <div className="px-4 pt-4 pb-2">
+                <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">
+                  Categories
+                </div>
               </div>
-              {visibleMenuItems.map((item) => (
+              
+              <div className="px-2">
+                {visibleMenuItems.map((item) => (
+                  <Link
+                    key={item.id}
+                    to={item.path}
+                    className={`block mx-2 px-3 py-3 text-sm font-medium transition-colors rounded-lg flex items-center gap-2 ${
+                      item.highlight 
+                        ? 'text-primary font-semibold bg-primary/5 hover:bg-primary/10' 
+                        : 'text-foreground hover:bg-muted hover:text-primary'
+                    }`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item.icon && <span>{item.icon}</span>}
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+              
+              {/* Divider */}
+              <div className="mx-4 my-3 border-t border-border" />
+              
+              {/* More section */}
+              <div className="px-4 pb-2">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                  More
+                </div>
+              </div>
+              
+              <div className="px-2 pb-4">
                 <Link
-                  key={item.id}
-                  to={item.path}
-                  className={`border-b border-border py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
-                    item.highlight ? 'text-primary font-semibold' : 'text-foreground hover:text-primary'
-                  }`}
+                  to="/about"
+                  className="block mx-2 px-3 py-3 text-sm font-medium text-foreground hover:bg-muted hover:text-primary rounded-lg transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  {item.icon && <span>{item.icon}</span>}
-                  {item.label}
+                  About Us
                 </Link>
-              ))}
-              
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-4 mb-2 px-1">
-                More
+                <Link
+                  to="/careers"
+                  className="block mx-2 px-3 py-3 text-sm font-medium text-foreground hover:bg-muted hover:text-primary rounded-lg transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Careers
+                </Link>
+                <Link
+                  to="/contact"
+                  className="block mx-2 px-3 py-3 text-sm font-medium text-foreground hover:bg-muted hover:text-primary rounded-lg transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Contact
+                </Link>
               </div>
-              <Link
-                to="/about"
-                className="border-b border-border py-3 text-sm font-medium text-foreground hover:text-primary"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                About Us
-              </Link>
-              <Link
-                to="/careers"
-                className="border-b border-border py-3 text-sm font-medium text-foreground hover:text-primary"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Careers
-              </Link>
-              <Link
-                to="/contact"
-                className="py-3 text-sm font-medium text-foreground hover:text-primary"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Contact
-              </Link>
             </nav>
           </motion.div>
         )}

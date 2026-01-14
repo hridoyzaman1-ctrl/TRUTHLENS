@@ -2,7 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { articles } from '@/data/mockData';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Eye, Share2, Facebook, Twitter } from 'lucide-react';
+import { Clock, Eye, Share2, Facebook, Twitter, Linkedin, Mail, Link2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ArticleCard } from '@/components/news/ArticleCard';
@@ -122,18 +122,68 @@ const ArticlePage = () => {
             ))}
           </div>
 
-          {/* Share */}
-          <div className="mt-8 flex items-center gap-4 border-t border-border pt-6">
-            <span className="text-sm font-medium text-foreground">Share:</span>
-            <Button variant="outline" size="icon">
-              <Facebook className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon">
-              <Twitter className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon">
-              <Share2 className="h-4 w-4" />
-            </Button>
+          {/* Social Share Buttons */}
+          <div className="mt-8 border-t border-border pt-6">
+            <h3 className="text-sm font-semibold text-foreground mb-4">Share this article</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="gap-2 hover:bg-[#1877F2] hover:text-white hover:border-[#1877F2] transition-colors"
+                onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(article.title)}`, '_blank', 'width=600,height=400')}
+              >
+                <Facebook className="h-4 w-4" />
+                <span className="hidden sm:inline">Facebook</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="gap-2 hover:bg-[#1DA1F2] hover:text-white hover:border-[#1DA1F2] transition-colors"
+                onClick={() => window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(article.title)}`, '_blank', 'width=600,height=400')}
+              >
+                <Twitter className="h-4 w-4" />
+                <span className="hidden sm:inline">Twitter</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="gap-2 hover:bg-[#0A66C2] hover:text-white hover:border-[#0A66C2] transition-colors"
+                onClick={() => window.open(`https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(window.location.href)}&title=${encodeURIComponent(article.title)}&summary=${encodeURIComponent(article.excerpt)}`, '_blank', 'width=600,height=400')}
+              >
+                <Linkedin className="h-4 w-4" />
+                <span className="hidden sm:inline">LinkedIn</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="gap-2 hover:bg-[#25D366] hover:text-white hover:border-[#25D366] transition-colors"
+                onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(article.title + ' ' + window.location.href)}`, '_blank')}
+              >
+                <MessageCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">WhatsApp</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="gap-2 hover:bg-muted transition-colors"
+                onClick={() => window.open(`mailto:?subject=${encodeURIComponent(article.title)}&body=${encodeURIComponent('Check out this article: ' + window.location.href)}`, '_self')}
+              >
+                <Mail className="h-4 w-4" />
+                <span className="hidden sm:inline">Email</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="gap-2 hover:bg-primary hover:text-primary-foreground transition-colors"
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  alert('Link copied to clipboard!');
+                }}
+              >
+                <Link2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Copy Link</span>
+              </Button>
+            </div>
           </div>
 
           {/* Comments Section */}
