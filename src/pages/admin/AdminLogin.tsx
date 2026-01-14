@@ -1,20 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import truthLensLogo from '@/assets/truthlens-logo.png';
 
-// Validation schema
+// Validation schemas
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters')
+});
+
+const resetSchema = z.object({
+  email: z.string().email('Please enter a valid email address')
 });
 
 // Mock admin credentials (will be replaced with Cloud auth)
@@ -23,18 +28,24 @@ const MOCK_ADMIN_CREDENTIALS = {
   password: 'admin123'
 };
 
-// Mock admin session storage key
+// Session storage keys
 const ADMIN_SESSION_KEY = 'truthlens_admin_session';
+const ADMIN_REMEMBER_KEY = 'truthlens_admin_remember';
 
 // Check if admin is authenticated
 export const isAdminAuthenticated = (): boolean => {
-  const session = sessionStorage.getItem(ADMIN_SESSION_KEY);
+  // First check localStorage (remember me), then sessionStorage
+  const persistedSession = localStorage.getItem(ADMIN_SESSION_KEY);
+  const session = persistedSession || sessionStorage.getItem(ADMIN_SESSION_KEY);
+  
   if (!session) return false;
   
   try {
     const parsed = JSON.parse(session);
-    // Check if session is expired (24 hours)
-    if (Date.now() - parsed.timestamp > 24 * 60 * 60 * 1000) {
+    // Check if session is expired (7 days for remembered, 24 hours for session)
+    const maxAge = persistedSession ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    if (Date.now() - parsed.timestamp > maxAge) {
+      localStorage.removeItem(ADMIN_SESSION_KEY);
       sessionStorage.removeItem(ADMIN_SESSION_KEY);
       return false;
     }
@@ -47,17 +58,27 @@ export const isAdminAuthenticated = (): boolean => {
 // Logout function
 export const adminLogout = () => {
   sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  localStorage.removeItem(ADMIN_SESSION_KEY);
 };
+
+// Get remembered email
+const getRememberedEmail = (): string => {
+  return localStorage.getItem(ADMIN_REMEMBER_KEY) || '';
+};
+
+type ViewMode = 'login' | 'reset' | 'reset-sent';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(getRememberedEmail());
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(!!getRememberedEmail());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState<{ email?: string; password?: string }>({});
+  const [viewMode, setViewMode] = useState<ViewMode>('login');
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -68,7 +89,11 @@ const AdminLogin = () => {
 
   const validateForm = () => {
     try {
-      loginSchema.parse({ email, password });
+      if (viewMode === 'reset') {
+        resetSchema.parse({ email });
+      } else {
+        loginSchema.parse({ email, password });
+      }
       setValidationErrors({});
       return true;
     } catch (err) {
@@ -109,7 +134,14 @@ const AdminLogin = () => {
         timestamp: Date.now()
       };
       
-      sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+      // Handle remember me
+      if (rememberMe) {
+        localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+        localStorage.setItem(ADMIN_REMEMBER_KEY, email);
+      } else {
+        sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+        localStorage.removeItem(ADMIN_REMEMBER_KEY);
+      }
       
       toast.success('Welcome back, Admin!');
       
@@ -121,6 +153,43 @@ const AdminLogin = () => {
     }
 
     setIsLoading(false);
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Mock password reset - will be replaced with Cloud auth
+    // When connected to Cloud, this will use supabase.auth.resetPasswordForEmail
+    if (email === MOCK_ADMIN_CREDENTIALS.email) {
+      setViewMode('reset-sent');
+      toast.success('Password reset email sent!');
+    } else {
+      // For security, always show success message even if email doesn't exist
+      setViewMode('reset-sent');
+      toast.success('If an account exists, a reset link has been sent.');
+    }
+
+    setIsLoading(false);
+  };
+
+  const switchToReset = () => {
+    setViewMode('reset');
+    setError('');
+    setValidationErrors({});
+  };
+
+  const switchToLogin = () => {
+    setViewMode('login');
+    setError('');
+    setValidationErrors({});
   };
 
   return (
@@ -144,100 +213,261 @@ const AdminLogin = () => {
                 alt="TruthLens" 
                 className="h-8 mx-auto mb-2"
               />
-              <CardTitle className="text-2xl font-display">Admin Portal</CardTitle>
+              <CardTitle className="text-2xl font-display">
+                {viewMode === 'login' && 'Admin Portal'}
+                {viewMode === 'reset' && 'Reset Password'}
+                {viewMode === 'reset-sent' && 'Check Your Email'}
+              </CardTitle>
               <CardDescription>
-                Sign in to access the admin dashboard
+                {viewMode === 'login' && 'Sign in to access the admin dashboard'}
+                {viewMode === 'reset' && 'Enter your email to receive a reset link'}
+                {viewMode === 'reset-sent' && 'We\'ve sent you password reset instructions'}
               </CardDescription>
             </div>
           </CardHeader>
           
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
+            <AnimatePresence mode="wait">
+              {/* Login Form */}
+              {viewMode === 'login' && (
+                <motion.form
+                  key="login"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.2 }}
+                  onSubmit={handleLogin}
+                  className="space-y-4"
+                >
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setValidationErrors(prev => ({ ...prev, email: undefined }));
+                        }}
+                        placeholder="admin@truthlens.com"
+                        className={`pl-10 ${validationErrors.email ? 'border-destructive' : ''}`}
+                        autoComplete="email"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    {validationErrors.email && (
+                      <p className="text-xs text-destructive">{validationErrors.email}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password">Password</Label>
+                      <button
+                        type="button"
+                        onClick={switchToReset}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          setValidationErrors(prev => ({ ...prev, password: undefined }));
+                        }}
+                        placeholder="••••••••"
+                        className={`pl-10 pr-10 ${validationErrors.password ? 'border-destructive' : ''}`}
+                        autoComplete="current-password"
+                        disabled={isLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {validationErrors.password && (
+                      <p className="text-xs text-destructive">{validationErrors.password}</p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="remember"
+                      checked={rememberMe}
+                      onCheckedChange={(checked) => setRememberMe(checked === true)}
+                      disabled={isLoading}
+                    />
+                    <Label 
+                      htmlFor="remember" 
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      Remember me for 7 days
+                    </Label>
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    size="lg"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <span className="flex items-center gap-2">
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                        Signing in...
+                      </span>
+                    ) : (
+                      'Sign In'
+                    )}
+                  </Button>
+                </motion.form>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setValidationErrors(prev => ({ ...prev, email: undefined }));
-                    }}
-                    placeholder="admin@truthlens.com"
-                    className={`pl-10 ${validationErrors.email ? 'border-destructive' : ''}`}
-                    autoComplete="email"
-                    disabled={isLoading}
-                  />
-                </div>
-                {validationErrors.email && (
-                  <p className="text-xs text-destructive">{validationErrors.email}</p>
-                )}
-              </div>
+              {/* Password Reset Form */}
+              {viewMode === 'reset' && (
+                <motion.form
+                  key="reset"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                  onSubmit={handlePasswordReset}
+                  className="space-y-4"
+                >
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setValidationErrors(prev => ({ ...prev, password: undefined }));
-                    }}
-                    placeholder="••••••••"
-                    className={`pl-10 pr-10 ${validationErrors.password ? 'border-destructive' : ''}`}
-                    autoComplete="current-password"
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setValidationErrors(prev => ({ ...prev, email: undefined }));
+                        }}
+                        placeholder="admin@truthlens.com"
+                        className={`pl-10 ${validationErrors.email ? 'border-destructive' : ''}`}
+                        autoComplete="email"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    {validationErrors.email && (
+                      <p className="text-xs text-destructive">{validationErrors.email}</p>
+                    )}
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    size="lg"
                     disabled={isLoading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    tabIndex={-1}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                    {isLoading ? (
+                      <span className="flex items-center gap-2">
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                        Sending...
+                      </span>
+                    ) : (
+                      'Send Reset Link'
+                    )}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={switchToLogin}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back to Login
+                  </Button>
+                </motion.form>
+              )}
+
+              {/* Reset Email Sent */}
+              {viewMode === 'reset-sent' && (
+                <motion.div
+                  key="reset-sent"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-4 text-center"
+                >
+                  <div className="flex justify-center">
+                    <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center">
+                      <CheckCircle className="h-8 w-8 text-green-500" />
+                    </div>
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground">
+                    If an account exists for <strong>{email}</strong>, you'll receive a password reset link shortly.
+                  </p>
+
+                  <p className="text-xs text-muted-foreground">
+                    Didn't receive the email? Check your spam folder or try again.
+                  </p>
+
+                  <div className="pt-4 space-y-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={switchToReset}
+                    >
+                      Try Again
+                    </Button>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={switchToLogin}
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Back to Login
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {viewMode === 'login' && (
+              <>
+                <div className="mt-6 pt-6 border-t border-border">
+                  <p className="text-xs text-center text-muted-foreground">
+                    <span className="font-medium">Demo credentials:</span><br />
+                    Email: admin@truthlens.com<br />
+                    Password: admin123
+                  </p>
                 </div>
-                {validationErrors.password && (
-                  <p className="text-xs text-destructive">{validationErrors.password}</p>
-                )}
-              </div>
-
-              <Button 
-                type="submit" 
-                className="w-full" 
-                size="lg"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-                    Signing in...
-                  </span>
-                ) : (
-                  'Sign In'
-                )}
-              </Button>
-            </form>
-
-            <div className="mt-6 pt-6 border-t border-border">
-              <p className="text-xs text-center text-muted-foreground">
-                <span className="font-medium">Demo credentials:</span><br />
-                Email: admin@truthlens.com<br />
-                Password: admin123
-              </p>
-            </div>
+              </>
+            )}
 
             <div className="mt-4 text-center">
               <a 
