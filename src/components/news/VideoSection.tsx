@@ -10,7 +10,7 @@ export const VideoSection = () => {
   if (videoArticles.length === 0) return null;
 
   return (
-    <section className="py-8 bg-gradient-to-br from-primary/5 to-accent/5">
+    <section className="py-8 bg-gradient-to-br from-primary/5 to-accent/5 overflow-hidden">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
@@ -23,9 +23,11 @@ export const VideoSection = () => {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {videoArticles.map((article) => (
-            <ArticleCard key={article.id} article={article} variant="video" />
+            <div key={article.id} className="relative isolate">
+              <ArticleCard article={article} variant="video" />
+            </div>
           ))}
         </div>
       </div>
