@@ -121,10 +121,10 @@ const AdminJobs = () => {
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="font-display text-2xl font-bold text-foreground">Job Listings</h1>
-        <Button onClick={openCreateDialog}>
+    <div className="px-1 sm:px-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+        <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">Job Listings</h1>
+        <Button onClick={openCreateDialog} size="sm" className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           New Job
         </Button>
@@ -216,43 +216,45 @@ const AdminJobs = () => {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{editingJob ? 'Edit Job' : 'Create New Job'}</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col mx-4 sm:mx-auto">
+          <DialogHeader className="flex-shrink-0 pr-8">
+            <DialogTitle className="text-lg sm:text-xl">{editingJob ? 'Edit Job' : 'Create New Job'}</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               {editingJob ? 'Update job listing details.' : 'Create a new job listing.'}
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto space-y-4 pr-2 -mr-2">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="title">Job Title *</Label>
+                <Label htmlFor="title" className="text-sm">Job Title *</Label>
                 <Input
                   id="title"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g., Senior Reporter"
+                  className="text-sm"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="department">Department *</Label>
+                <Label htmlFor="department" className="text-sm">Department *</Label>
                 <Input
                   id="department"
                   value={formData.department}
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                   placeholder="e.g., Editorial"
+                  className="text-sm"
                   required
                 />
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="type">Job Type *</Label>
+                <Label htmlFor="type" className="text-sm">Job Type *</Label>
                 <Select value={formData.type} onValueChange={(val) => setFormData({ ...formData, type: val as Job['type'] })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -265,37 +267,40 @@ const AdminJobs = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="deadline">Application Deadline *</Label>
+                <Label htmlFor="deadline" className="text-sm">Application Deadline *</Label>
                 <Input
                   id="deadline"
                   type="date"
                   value={formData.deadline}
                   onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                  className="text-sm"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description *</Label>
+              <Label htmlFor="description" className="text-sm">Description *</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Brief description of the role"
-                rows={3}
+                rows={2}
+                className="text-sm resize-none"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="requirements">Requirements (one per line) *</Label>
+              <Label htmlFor="requirements" className="text-sm">Requirements (one per line) *</Label>
               <Textarea
                 id="requirements"
                 value={formData.requirements}
                 onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
                 placeholder="3+ years of experience&#10;Excellent writing skills&#10;Team player"
-                rows={5}
+                rows={3}
+                className="text-sm resize-none"
                 required
               />
             </div>
@@ -306,14 +311,14 @@ const AdminJobs = () => {
                 checked={formData.isOpen}
                 onCheckedChange={(checked) => setFormData({ ...formData, isOpen: checked })}
               />
-              <Label htmlFor="isOpen">Job is open for applications</Label>
+              <Label htmlFor="isOpen" className="text-sm">Job is open for applications</Label>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 pt-4 pb-2 sticky bottom-0 bg-background">
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="w-full sm:w-auto">
                 Cancel
               </Button>
-              <Button type="submit">
+              <Button type="submit" className="w-full sm:w-auto">
                 <Save className="mr-2 h-4 w-4" />
                 {editingJob ? 'Update Job' : 'Create Job'}
               </Button>
