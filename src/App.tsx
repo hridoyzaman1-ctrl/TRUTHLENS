@@ -14,6 +14,7 @@ import CareersPage from "./pages/CareersPage";
 import InternshipPage from "./pages/InternshipPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
+import SearchPage from "./pages/SearchPage";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminArticles from "./pages/admin/AdminArticles";
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/internship" element={<InternshipPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
+            <Route path="/search" element={<SearchPage />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="featured" element={<AdminFeatured />} />
