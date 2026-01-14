@@ -95,9 +95,9 @@ export const ArticleCard = ({ article, variant = 'default' }: ArticleCardProps) 
     return (
       <Link
         to={`/article/${article.slug}`}
-        className="group block overflow-hidden rounded-xl bg-card transition-shadow hover:shadow-lg"
+        className="group block overflow-hidden rounded-xl bg-card border border-border transition-shadow hover:shadow-lg h-full"
       >
-        <div className="aspect-video overflow-hidden relative">
+        <div className="aspect-video overflow-hidden relative flex-shrink-0">
           <img
             src={article.featuredImage}
             alt={article.title}
@@ -105,25 +105,25 @@ export const ArticleCard = ({ article, variant = 'default' }: ArticleCardProps) 
             loading="lazy"
           />
           <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
-            <div className="h-14 w-14 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <PlayCircle className="h-8 w-8 text-primary" />
+            <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+              <PlayCircle className="h-6 w-6 md:h-8 md:w-8 text-primary" />
             </div>
           </div>
-          <Badge className={`absolute top-3 left-3 ${getCategoryColor(article.category)} text-white border-0 text-[10px]`}>
+          <Badge className={`absolute top-2 left-2 ${getCategoryColor(article.category)} text-white border-0 text-[10px]`}>
             {article.category.replace('-', ' ')}
           </Badge>
         </div>
-        <div className="p-4">
-          <h3 className="font-display text-base font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+        <div className="p-3 md:p-4">
+          <h3 className="font-display text-sm md:text-base font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors min-h-[2.5rem] md:min-h-[3rem]">
             {article.title}
           </h3>
           <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {formatDistanceToNow(article.publishedAt, { addSuffix: true })}
+              <Clock className="h-3 w-3 flex-shrink-0" />
+              <span className="truncate">{formatDistanceToNow(article.publishedAt, { addSuffix: true })}</span>
             </span>
             <span className="flex items-center gap-1">
-              <Eye className="h-3 w-3" />
+              <Eye className="h-3 w-3 flex-shrink-0" />
               {article.views.toLocaleString()}
             </span>
           </div>
