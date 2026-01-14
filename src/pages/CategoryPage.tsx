@@ -21,12 +21,12 @@ const CategoryPage = () => {
 
   return (
     <Layout>
-      <div className="bg-primary py-12 mb-8">
+      <div className="bg-primary py-6 md:py-8 mb-6">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="font-display text-3xl font-bold text-primary-foreground md:text-4xl">
+          <h1 className="font-display text-2xl font-bold text-primary-foreground md:text-3xl">
             {category.name}
           </h1>
-          <p className="mt-2 text-primary-foreground/80">{category.description}</p>
+          <p className="mt-1 text-sm text-primary-foreground/80">{category.description}</p>
         </div>
       </div>
 
