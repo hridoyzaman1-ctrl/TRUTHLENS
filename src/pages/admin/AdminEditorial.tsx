@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Save, Pen, MessageCircle, GraduationCap, Eye, EyeOff, Edit, Trash2, Plus } from 'lucide-react';
+import { Save, Pen, MessageCircle, GraduationCap, Eye, Edit, Trash2, Plus, FileText, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { articles } from '@/data/mockData';
+import { 
+  defaultBenefits, 
+  defaultDepartments, 
+  defaultFAQs, 
+  defaultPageContent,
+  mockApplications,
+  iconMap,
+  type InternshipBenefit,
+  type InternshipDepartment,
+  type InternshipFAQ,
+  type InternshipPageContent,
+  type InternshipApplication
+} from '@/data/internshipData';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -23,51 +37,10 @@ const initialEditorialSettings = {
   moderateComments: true
 };
 
-// Mock internship applications
-const mockApplications = [
-  {
-    id: '1',
-    fullName: 'Alex Johnson',
-    email: 'alex.j@university.edu',
-    phone: '+1 555-0123',
-    university: 'Columbia University',
-    department: 'editorial',
-    portfolio: 'https://alexjohnson.com',
-    coverLetter: 'I am passionate about investigative journalism and want to make a difference...',
-    status: 'pending',
-    submittedAt: new Date('2026-01-12T10:00:00')
-  },
-  {
-    id: '2',
-    fullName: 'Maria Santos',
-    email: 'maria.s@college.edu',
-    phone: '+1 555-0456',
-    university: 'NYU',
-    department: 'multimedia',
-    portfolio: 'https://mariasantos.portfolio.com',
-    coverLetter: 'As a visual storyteller, I believe in the power of multimedia journalism...',
-    status: 'reviewed',
-    submittedAt: new Date('2026-01-10T14:30:00')
-  },
-  {
-    id: '3',
-    fullName: 'David Kim',
-    email: 'david.kim@school.edu',
-    phone: '+1 555-0789',
-    university: 'Boston University',
-    department: 'digital',
-    portfolio: '',
-    coverLetter: 'I want to learn about digital media and social engagement strategies...',
-    status: 'shortlisted',
-    submittedAt: new Date('2026-01-08T09:15:00')
-  }
-];
-
 // Mock internship settings
 const initialInternshipSettings = {
   acceptingApplications: true,
   showBannerOnHomepage: true,
-  departments: ['editorial', 'multimedia', 'podcasting', 'digital'],
   requirePortfolio: false,
   autoReplyEnabled: true
 };
@@ -75,8 +48,22 @@ const initialInternshipSettings = {
 const AdminEditorial = () => {
   const [editorialSettings, setEditorialSettings] = useState(initialEditorialSettings);
   const [internshipSettings, setInternshipSettings] = useState(initialInternshipSettings);
-  const [applications, setApplications] = useState(mockApplications);
-  const [selectedApplication, setSelectedApplication] = useState<typeof mockApplications[0] | null>(null);
+  const [applications, setApplications] = useState<InternshipApplication[]>(mockApplications);
+  const [selectedApplication, setSelectedApplication] = useState<InternshipApplication | null>(null);
+  
+  // Internship content management
+  const [benefits, setBenefits] = useState<InternshipBenefit[]>(defaultBenefits);
+  const [departments, setDepartments] = useState<InternshipDepartment[]>(defaultDepartments);
+  const [faqs, setFaqs] = useState<InternshipFAQ[]>(defaultFAQs);
+  const [pageContent, setPageContent] = useState<InternshipPageContent>(defaultPageContent);
+  
+  // Dialog states
+  const [editingBenefit, setEditingBenefit] = useState<InternshipBenefit | null>(null);
+  const [editingDepartment, setEditingDepartment] = useState<InternshipDepartment | null>(null);
+  const [editingFaq, setEditingFaq] = useState<InternshipFAQ | null>(null);
+  const [isBenefitDialogOpen, setIsBenefitDialogOpen] = useState(false);
+  const [isDepartmentDialogOpen, setIsDepartmentDialogOpen] = useState(false);
+  const [isFaqDialogOpen, setIsFaqDialogOpen] = useState(false);
 
   const editorialArticles = articles.filter(a => a.category === 'editorial');
 
@@ -98,11 +85,79 @@ const AdminEditorial = () => {
     toast.success('Internship settings saved successfully');
   };
 
+  const handleSavePageContent = () => {
+    // When connected to Cloud, this will update the database
+    toast.success('Page content saved successfully');
+  };
+
   const updateApplicationStatus = (id: string, status: string) => {
     setApplications(applications.map(app => 
-      app.id === id ? { ...app, status } : app
+      app.id === id ? { ...app, status: status as InternshipApplication['status'] } : app
     ));
     toast.success(`Application status updated to ${status}`);
+  };
+
+  // Benefit CRUD
+  const handleSaveBenefit = (benefit: InternshipBenefit) => {
+    if (editingBenefit) {
+      setBenefits(benefits.map(b => b.id === benefit.id ? benefit : b));
+      toast.success('Benefit updated successfully');
+    } else {
+      const newBenefit = { ...benefit, id: Date.now().toString(), order: benefits.length + 1 };
+      setBenefits([...benefits, newBenefit]);
+      toast.success('Benefit added successfully');
+    }
+    setIsBenefitDialogOpen(false);
+    setEditingBenefit(null);
+  };
+
+  const handleDeleteBenefit = (id: string) => {
+    if (confirm('Are you sure you want to delete this benefit?')) {
+      setBenefits(benefits.filter(b => b.id !== id));
+      toast.success('Benefit deleted successfully');
+    }
+  };
+
+  // Department CRUD
+  const handleSaveDepartment = (department: InternshipDepartment) => {
+    if (editingDepartment) {
+      setDepartments(departments.map(d => d.id === department.id ? department : d));
+      toast.success('Department updated successfully');
+    } else {
+      const newDepartment = { ...department, id: Date.now().toString(), order: departments.length + 1 };
+      setDepartments([...departments, newDepartment]);
+      toast.success('Department added successfully');
+    }
+    setIsDepartmentDialogOpen(false);
+    setEditingDepartment(null);
+  };
+
+  const handleDeleteDepartment = (id: string) => {
+    if (confirm('Are you sure you want to delete this department?')) {
+      setDepartments(departments.filter(d => d.id !== id));
+      toast.success('Department deleted successfully');
+    }
+  };
+
+  // FAQ CRUD
+  const handleSaveFaq = (faq: InternshipFAQ) => {
+    if (editingFaq) {
+      setFaqs(faqs.map(f => f.id === faq.id ? faq : f));
+      toast.success('FAQ updated successfully');
+    } else {
+      const newFaq = { ...faq, id: Date.now().toString(), order: faqs.length + 1 };
+      setFaqs([...faqs, newFaq]);
+      toast.success('FAQ added successfully');
+    }
+    setIsFaqDialogOpen(false);
+    setEditingFaq(null);
+  };
+
+  const handleDeleteFaq = (id: string) => {
+    if (confirm('Are you sure you want to delete this FAQ?')) {
+      setFaqs(faqs.filter(f => f.id !== id));
+      toast.success('FAQ deleted successfully');
+    }
   };
 
   return (
@@ -117,7 +172,7 @@ const AdminEditorial = () => {
       </div>
 
       <Tabs defaultValue="editorial" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-flex">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
           <TabsTrigger value="editorial" className="gap-2">
             <Pen className="h-4 w-4" />
             <span className="hidden sm:inline">Editorial</span>
@@ -129,6 +184,10 @@ const AdminEditorial = () => {
           <TabsTrigger value="internship" className="gap-2">
             <GraduationCap className="h-4 w-4" />
             <span className="hidden sm:inline">Internship</span>
+          </TabsTrigger>
+          <TabsTrigger value="internship-content" className="gap-2">
+            <Edit className="h-4 w-4" />
+            <span className="hidden sm:inline">Page Content</span>
           </TabsTrigger>
         </TabsList>
 
@@ -366,6 +425,12 @@ const AdminEditorial = () => {
                         <Badge className={`${getStatusBadge(app.status)} text-white border-0 text-xs`}>
                           {app.status}
                         </Badge>
+                        {app.cvFileName && (
+                          <Badge variant="outline" className="text-xs">
+                            <FileText className="h-3 w-3 mr-1" />
+                            CV Attached
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground">{app.email}</p>
                       <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
@@ -413,6 +478,20 @@ const AdminEditorial = () => {
                                   <p className="font-medium">{selectedApplication.portfolio || 'Not provided'}</p>
                                 </div>
                               </div>
+                              
+                              {selectedApplication.cvFileName && (
+                                <div>
+                                  <Label className="text-xs text-muted-foreground">CV/Resume</Label>
+                                  <div className="flex items-center gap-2 mt-1 p-3 rounded-lg bg-muted">
+                                    <FileText className="h-5 w-5 text-primary" />
+                                    <span className="flex-1 text-sm font-medium">{selectedApplication.cvFileName}</span>
+                                    <Button size="sm" variant="outline">
+                                      <Download className="h-4 w-4 mr-1" /> Download
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                              
                               <div>
                                 <Label className="text-xs text-muted-foreground">Cover Letter</Label>
                                 <p className="mt-1 text-sm p-3 bg-muted rounded-lg">{selectedApplication.coverLetter}</p>
@@ -451,7 +530,462 @@ const AdminEditorial = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Internship Page Content Tab */}
+        <TabsContent value="internship-content" className="space-y-6">
+          {/* Page Content Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Page Content & Texts</CardTitle>
+              <CardDescription>Edit the main text content of the internship page</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Hero Title</Label>
+                  <Input
+                    value={pageContent.heroTitle}
+                    onChange={(e) => setPageContent({ ...pageContent, heroTitle: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Hero Subtitle (Badge)</Label>
+                  <Input
+                    value={pageContent.heroSubtitle}
+                    onChange={(e) => setPageContent({ ...pageContent, heroSubtitle: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Hero Description</Label>
+                <Textarea
+                  value={pageContent.heroDescription}
+                  onChange={(e) => setPageContent({ ...pageContent, heroDescription: e.target.value })}
+                  rows={2}
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Why Join Title</Label>
+                  <Input
+                    value={pageContent.whyJoinTitle}
+                    onChange={(e) => setPageContent({ ...pageContent, whyJoinTitle: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Departments Title</Label>
+                  <Input
+                    value={pageContent.departmentsTitle}
+                    onChange={(e) => setPageContent({ ...pageContent, departmentsTitle: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Why Join Description</Label>
+                <Textarea
+                  value={pageContent.whyJoinDescription}
+                  onChange={(e) => setPageContent({ ...pageContent, whyJoinDescription: e.target.value })}
+                  rows={2}
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Form Title</Label>
+                  <Input
+                    value={pageContent.formTitle}
+                    onChange={(e) => setPageContent({ ...pageContent, formTitle: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>FAQ Title</Label>
+                  <Input
+                    value={pageContent.faqTitle}
+                    onChange={(e) => setPageContent({ ...pageContent, faqTitle: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Form Description</Label>
+                <Textarea
+                  value={pageContent.formDescription}
+                  onChange={(e) => setPageContent({ ...pageContent, formDescription: e.target.value })}
+                  rows={2}
+                />
+              </div>
+              <Button onClick={handleSavePageContent}>
+                <Save className="mr-2 h-4 w-4" /> Save Page Content
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Benefits Card */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Benefits</CardTitle>
+                  <CardDescription>Manage internship benefits displayed on the page</CardDescription>
+                </div>
+                <Dialog open={isBenefitDialogOpen} onOpenChange={setIsBenefitDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" onClick={() => setEditingBenefit(null)}>
+                      <Plus className="h-4 w-4 mr-1" /> Add Benefit
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{editingBenefit ? 'Edit Benefit' : 'Add Benefit'}</DialogTitle>
+                    </DialogHeader>
+                    <BenefitForm 
+                      benefit={editingBenefit} 
+                      onSave={handleSaveBenefit}
+                      onCancel={() => setIsBenefitDialogOpen(false)}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {benefits.sort((a, b) => a.order - b.order).map((benefit) => (
+                  <div key={benefit.id} className="flex items-center gap-4 p-4 rounded-lg bg-muted">
+                    <Badge variant="outline" className="text-xs">{benefit.iconName}</Badge>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-sm">{benefit.title}</h4>
+                      <p className="text-xs text-muted-foreground truncate">{benefit.description}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="icon" 
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingBenefit(benefit);
+                          setIsBenefitDialogOpen(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        size="icon" 
+                        variant="ghost"
+                        className="text-destructive"
+                        onClick={() => handleDeleteBenefit(benefit.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Departments Card */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Departments</CardTitle>
+                  <CardDescription>Manage internship departments</CardDescription>
+                </div>
+                <Dialog open={isDepartmentDialogOpen} onOpenChange={setIsDepartmentDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" onClick={() => setEditingDepartment(null)}>
+                      <Plus className="h-4 w-4 mr-1" /> Add Department
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{editingDepartment ? 'Edit Department' : 'Add Department'}</DialogTitle>
+                    </DialogHeader>
+                    <DepartmentForm 
+                      department={editingDepartment} 
+                      onSave={handleSaveDepartment}
+                      onCancel={() => setIsDepartmentDialogOpen(false)}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {departments.sort((a, b) => a.order - b.order).map((dept) => (
+                  <div key={dept.id} className="flex items-center gap-4 p-4 rounded-lg bg-muted">
+                    <Badge variant="outline" className="text-xs">{dept.iconName}</Badge>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-sm">{dept.name}</h4>
+                      <p className="text-xs text-muted-foreground truncate">{dept.description}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="icon" 
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingDepartment(dept);
+                          setIsDepartmentDialogOpen(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        size="icon" 
+                        variant="ghost"
+                        className="text-destructive"
+                        onClick={() => handleDeleteDepartment(dept.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* FAQs Card */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>FAQs</CardTitle>
+                  <CardDescription>Manage frequently asked questions</CardDescription>
+                </div>
+                <Dialog open={isFaqDialogOpen} onOpenChange={setIsFaqDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" onClick={() => setEditingFaq(null)}>
+                      <Plus className="h-4 w-4 mr-1" /> Add FAQ
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{editingFaq ? 'Edit FAQ' : 'Add FAQ'}</DialogTitle>
+                    </DialogHeader>
+                    <FAQForm 
+                      faq={editingFaq} 
+                      onSave={handleSaveFaq}
+                      onCancel={() => setIsFaqDialogOpen(false)}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {faqs.sort((a, b) => a.order - b.order).map((faq) => (
+                  <div key={faq.id} className="flex items-center gap-4 p-4 rounded-lg bg-muted">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-sm">{faq.question}</h4>
+                      <p className="text-xs text-muted-foreground truncate">{faq.answer}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="icon" 
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingFaq(faq);
+                          setIsFaqDialogOpen(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        size="icon" 
+                        variant="ghost"
+                        className="text-destructive"
+                        onClick={() => handleDeleteFaq(faq.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+};
+
+// Benefit Form Component
+const BenefitForm = ({ 
+  benefit, 
+  onSave, 
+  onCancel 
+}: { 
+  benefit: InternshipBenefit | null;
+  onSave: (benefit: InternshipBenefit) => void;
+  onCancel: () => void;
+}) => {
+  const [formData, setFormData] = useState<Partial<InternshipBenefit>>(
+    benefit || { title: '', description: '', iconName: 'BookOpen', order: 1 }
+  );
+
+  return (
+    <div className="space-y-4 mt-4">
+      <div className="space-y-2">
+        <Label>Title</Label>
+        <Input
+          value={formData.title || ''}
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          placeholder="Benefit title"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Description</Label>
+        <Textarea
+          value={formData.description || ''}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="Benefit description"
+          rows={3}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Icon</Label>
+        <Select
+          value={formData.iconName}
+          onValueChange={(value) => setFormData({ ...formData, iconName: value })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select an icon" />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.keys(iconMap).map((icon) => (
+              <SelectItem key={icon} value={icon}>{icon}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>Order</Label>
+        <Input
+          type="number"
+          value={formData.order || 1}
+          onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 1 })}
+          min={1}
+        />
+      </div>
+      <div className="flex gap-2 justify-end">
+        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button onClick={() => onSave(formData as InternshipBenefit)}>Save</Button>
+      </div>
+    </div>
+  );
+};
+
+// Department Form Component
+const DepartmentForm = ({ 
+  department, 
+  onSave, 
+  onCancel 
+}: { 
+  department: InternshipDepartment | null;
+  onSave: (department: InternshipDepartment) => void;
+  onCancel: () => void;
+}) => {
+  const [formData, setFormData] = useState<Partial<InternshipDepartment>>(
+    department || { name: '', description: '', iconName: 'Briefcase', order: 1 }
+  );
+
+  return (
+    <div className="space-y-4 mt-4">
+      <div className="space-y-2">
+        <Label>Name</Label>
+        <Input
+          value={formData.name || ''}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          placeholder="Department name"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Description</Label>
+        <Textarea
+          value={formData.description || ''}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="Department description"
+          rows={3}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Icon</Label>
+        <Select
+          value={formData.iconName}
+          onValueChange={(value) => setFormData({ ...formData, iconName: value })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select an icon" />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.keys(iconMap).map((icon) => (
+              <SelectItem key={icon} value={icon}>{icon}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>Order</Label>
+        <Input
+          type="number"
+          value={formData.order || 1}
+          onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 1 })}
+          min={1}
+        />
+      </div>
+      <div className="flex gap-2 justify-end">
+        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button onClick={() => onSave(formData as InternshipDepartment)}>Save</Button>
+      </div>
+    </div>
+  );
+};
+
+// FAQ Form Component
+const FAQForm = ({ 
+  faq, 
+  onSave, 
+  onCancel 
+}: { 
+  faq: InternshipFAQ | null;
+  onSave: (faq: InternshipFAQ) => void;
+  onCancel: () => void;
+}) => {
+  const [formData, setFormData] = useState<Partial<InternshipFAQ>>(
+    faq || { question: '', answer: '', order: 1 }
+  );
+
+  return (
+    <div className="space-y-4 mt-4">
+      <div className="space-y-2">
+        <Label>Question</Label>
+        <Input
+          value={formData.question || ''}
+          onChange={(e) => setFormData({ ...formData, question: e.target.value })}
+          placeholder="FAQ question"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Answer</Label>
+        <Textarea
+          value={formData.answer || ''}
+          onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
+          placeholder="FAQ answer"
+          rows={4}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Order</Label>
+        <Input
+          type="number"
+          value={formData.order || 1}
+          onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 1 })}
+          min={1}
+        />
+      </div>
+      <div className="flex gap-2 justify-end">
+        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button onClick={() => onSave(formData as InternshipFAQ)}>Save</Button>
+      </div>
     </div>
   );
 };
