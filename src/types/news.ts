@@ -2,14 +2,23 @@ export type Category =
   | 'national' 
   | 'international' 
   | 'economy' 
-  | 'environment' 
-  | 'society' 
-  | 'culture' 
+  | 'politics' 
+  | 'sports' 
+  | 'entertainment' 
   | 'technology' 
   | 'editorial' 
-  | 'untold-stories'
-  | 'sports'
-  | 'entertainment';
+  | 'untold-stories';
+
+export interface MenuItem {
+  id: string;
+  label: string;
+  path: string;
+  type: 'category' | 'page' | 'external';
+  isVisible: boolean;
+  order: number;
+  highlight?: boolean;
+  icon?: string;
+}
 
 export type UserRole = 'admin' | 'editor' | 'journalist' | 'author' | 'reporter';
 

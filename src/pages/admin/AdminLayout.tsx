@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, FolderOpen, Image, Users, Briefcase, Settings, Menu, X, LogOut, Star, Pen, LayoutGrid } from 'lucide-react';
+import { LayoutDashboard, FileText, FolderOpen, Image, Users, Briefcase, Settings, Menu, X, LogOut, Star, Pen, LayoutGrid, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import logo from '@/assets/truthlens-logo.png';
@@ -9,6 +9,7 @@ const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
   { icon: Star, label: 'Featured', path: '/admin/featured' },
   { icon: LayoutGrid, label: 'Sections', path: '/admin/sections' },
+  { icon: Navigation, label: 'Header Menu', path: '/admin/menu' },
   { icon: Pen, label: 'Editorial', path: '/admin/editorial' },
   { icon: FileText, label: 'Articles', path: '/admin/articles' },
   { icon: FolderOpen, label: 'Categories', path: '/admin/categories' },

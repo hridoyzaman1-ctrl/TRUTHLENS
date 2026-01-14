@@ -1,4 +1,4 @@
-import { Article, Author, Job, Category } from '@/types/news';
+import { Article, Author, Job, Category, MenuItem } from '@/types/news';
 
 export const authors: Author[] = [
   {
@@ -50,7 +50,7 @@ export const articles: Article[] = [
     slug: 'global-climate-summit-historic-agreement',
     excerpt: 'World leaders unite in unprecedented commitment to reduce carbon emissions by 60% before 2035, marking a pivotal moment in climate action.',
     content: 'In a landmark decision that climate scientists are calling "a turning point for humanity," representatives from 195 countries have agreed to the most ambitious carbon reduction targets in history. The agreement, reached after two weeks of intense negotiations, commits nations to reducing their carbon emissions by 60% from 2020 levels by 2035.\n\nThe deal includes unprecedented financial commitments from developed nations to help developing countries transition to clean energy, with a fund of $500 billion established for this purpose. Environmental groups have cautiously welcomed the agreement while noting that implementation will be crucial.',
-    category: 'environment',
+    category: 'politics',
     author: authors[2],
     featuredImage: 'https://images.unsplash.com/photo-1611273426858-450d8e3c9fce?w=1200&h=800&fit=crop',
     videoUrl: 'https://www.youtube.com/embed/JGwWNGJdvx8',
@@ -148,7 +148,7 @@ export const articles: Article[] = [
     slug: 'cultural-renaissance-traditional-arts-digital',
     excerpt: 'How ancient crafts and traditions are being preserved and celebrated through modern technology.',
     content: 'A new wave of digital preservation is breathing life into ancient art forms, connecting generations through innovative platforms.',
-    category: 'culture',
+    category: 'entertainment',
     author: authors[2],
     featuredImage: 'https://images.unsplash.com/photo-1499364615650-ec38552f4f34?w=1200&h=800&fit=crop',
     tags: ['culture', 'tradition', 'digital'],
@@ -202,7 +202,7 @@ export const articles: Article[] = [
     slug: 'youth-movements-political-discourse',
     excerpt: 'Young activists across the globe are challenging traditional politics and demanding change.',
     content: 'A new generation of activists is redefining political engagement, using social media and grassroots organizing to amplify their voices.',
-    category: 'society',
+    category: 'politics',
     author: authors[1],
     featuredImage: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1200&h=800&fit=crop',
     tags: ['society', 'youth', 'politics'],
@@ -438,12 +438,22 @@ export const categories: { id: Category; name: string; description: string }[] =
   { id: 'national', name: 'National', description: 'News from across the nation' },
   { id: 'international', name: 'International', description: 'Global news and events' },
   { id: 'economy', name: 'Economy', description: 'Business and financial news' },
-  { id: 'environment', name: 'Environment', description: 'Climate and environmental stories' },
-  { id: 'society', name: 'Society', description: 'Social issues and community' },
-  { id: 'culture', name: 'Culture', description: 'Arts, entertainment, and heritage' },
-  { id: 'technology', name: 'Technology', description: 'Tech news and innovations' },
-  { id: 'sports', name: 'Sports', description: 'Sports news and highlights' },
   { id: 'entertainment', name: 'Entertainment', description: 'Movies, music, and celebrity news' },
+  { id: 'sports', name: 'Sports', description: 'Sports news and highlights' },
+  { id: 'politics', name: 'Politics', description: 'Political news and analysis' },
+  { id: 'technology', name: 'Technology', description: 'Tech news and innovations' },
   { id: 'editorial', name: 'Editorial', description: 'Opinion and analysis' },
   { id: 'untold-stories', name: 'Untold Stories', description: 'Investigative journalism' }
+];
+
+export const headerMenuItems: MenuItem[] = [
+  { id: '1', label: 'National', path: '/category/national', type: 'category', isVisible: true, order: 1 },
+  { id: '2', label: 'International', path: '/category/international', type: 'category', isVisible: true, order: 2 },
+  { id: '3', label: 'Economy', path: '/category/economy', type: 'category', isVisible: true, order: 3 },
+  { id: '4', label: 'Entertainment', path: '/category/entertainment', type: 'category', isVisible: true, order: 4 },
+  { id: '5', label: 'Sports', path: '/category/sports', type: 'category', isVisible: true, order: 5 },
+  { id: '6', label: 'Politics', path: '/category/politics', type: 'category', isVisible: true, order: 6 },
+  { id: '7', label: 'Technology', path: '/category/technology', type: 'category', isVisible: true, order: 7 },
+  { id: '8', label: 'Untold Stories', path: '/category/untold-stories', type: 'category', isVisible: true, order: 8, highlight: true },
+  { id: '9', label: 'Internship', path: '/internship', type: 'page', isVisible: true, order: 9, highlight: true, icon: '🎓' },
 ];
