@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Menu, X, Search, User, ChevronDown, Calendar, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,11 +13,46 @@ import {
 } from '@/components/ui/dropdown-menu';
 import logo from '@/assets/truthlens-logo.png';
 
+// Live Clock Component
+const LiveClock = ({ className = '' }: { className?: string }) => {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <span className={className}>
+      {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+    </span>
+  );
+};
+
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentDate, setCurrentDate] = useState(new Date());
   const navigate = useNavigate();
+
+  // Update date at midnight
+  useEffect(() => {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    const msUntilMidnight = tomorrow.getTime() - now.getTime();
+
+    const timer = setTimeout(() => {
+      setCurrentDate(new Date());
+    }, msUntilMidnight);
+
+    return () => clearTimeout(timer);
+  }, [currentDate]);
 
   const visibleMenuItems = headerMenuItems
     .filter(item => item.isVisible)
@@ -27,14 +62,29 @@ export const Header = () => {
   const mainNavItems = visibleMenuItems.filter(item => item.showInMainNav === true);
   const moreNavItems = visibleMenuItems.filter(item => item.showInMainNav !== true);
 
+  const formattedDate = currentDate.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       {/* Top Bar - Hidden on mobile for cleaner look */}
       <div className="border-b border-border bg-primary hidden sm:block">
         <div className="container mx-auto flex h-8 items-center justify-between px-4 text-xs text-primary-foreground">
           <span className="font-medium">Authentic Stories. Unbiased Voices.</span>
-          <div className="flex items-center gap-4">
-            <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5">
+              <Calendar className="h-3 w-3" />
+              {formattedDate}
+            </span>
+            <span className="text-primary-foreground/60">|</span>
+            <span className="flex items-center gap-1.5">
+              <Clock className="h-3 w-3" />
+              <LiveClock />
+            </span>
           </div>
         </div>
       </div>
@@ -207,6 +257,19 @@ export const Header = () => {
                         </div>
                       </Link>
                     ))}
+                  
+                  {/* View All Results Link */}
+                  <Link
+                    to={`/search?q=${encodeURIComponent(searchQuery)}`}
+                    className="flex items-center justify-center gap-2 p-3 text-sm font-medium text-primary hover:bg-muted transition-colors border-t border-border"
+                    onClick={() => {
+                      setIsSearchOpen(false);
+                    }}
+                  >
+                    <Search className="h-4 w-4" />
+                    View all results for "{searchQuery}"
+                  </Link>
+                  
                   {articles.filter(a => 
                     a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                     a.excerpt.toLowerCase().includes(searchQuery.toLowerCase())
@@ -234,15 +297,15 @@ export const Header = () => {
             
             {/* Menu container with border and shadow */}
             <nav className="relative mx-3 my-2 flex flex-col bg-card border-2 border-border rounded-xl shadow-2xl max-h-[70vh] overflow-y-auto">
-              {/* Date & Time Header */}
+              {/* Date & Time Header with Live Clock */}
               <div className="px-4 pt-4 pb-3 border-b border-border bg-muted/30">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Calendar className="h-3.5 w-3.5" />
-                  <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                  <span>{formattedDate}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                   <Clock className="h-3.5 w-3.5" />
-                  <span>{new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <LiveClock />
                 </div>
               </div>
               
