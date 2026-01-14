@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, CheckCircle } from 'lucide-react';
+import { Mail, CheckCircle, GraduationCap, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -23,7 +24,10 @@ export const NewsletterSignup = ({ variant = 'card' }: NewsletterSignupProps) =>
 
     setIsSubmitting(true);
     
-    // Simulate API call
+    // TODO: Replace with actual API call when connected to Cloud
+    // Example with Supabase:
+    // const { error } = await supabase.from('newsletter_subscribers').insert({ email });
+    // if (error) throw error;
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     setIsSubscribed(true);
@@ -55,13 +59,14 @@ export const NewsletterSignup = ({ variant = 'card' }: NewsletterSignupProps) =>
 
   return (
     <div className="rounded-xl bg-gradient-to-br from-primary to-primary/80 p-6 text-primary-foreground">
+      {/* Newsletter Section */}
       <div className="flex items-center gap-3 mb-4">
         <div className="h-12 w-12 rounded-full bg-primary-foreground/10 flex items-center justify-center">
           <Mail className="h-6 w-6" />
         </div>
         <div>
-          <h3 className="font-display font-bold text-lg">Stay Updated</h3>
-          <p className="text-sm text-primary-foreground/80">Get the latest stories in your inbox</p>
+          <h3 className="font-display font-bold text-lg">Stay Informed</h3>
+          <p className="text-sm text-primary-foreground/80">Subscribe to our newsletter for the latest stories delivered to your inbox</p>
         </div>
       </div>
 
@@ -103,6 +108,32 @@ export const NewsletterSignup = ({ variant = 'card' }: NewsletterSignupProps) =>
           </motion.form>
         )}
       </AnimatePresence>
+
+      {/* Divider */}
+      <div className="my-5 border-t border-primary-foreground/20" />
+
+      {/* Internship CTA Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex items-center gap-3 flex-1">
+          <div className="h-10 w-10 rounded-full bg-primary-foreground/10 flex items-center justify-center flex-shrink-0">
+            <GraduationCap className="h-5 w-5" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-sm">Start Your Journalism Career</h4>
+            <p className="text-xs text-primary-foreground/70">Join our internship program and learn from industry experts</p>
+          </div>
+        </div>
+        <Link to="/internship">
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="bg-transparent border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground gap-2 whitespace-nowrap"
+          >
+            Apply Now
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 };
