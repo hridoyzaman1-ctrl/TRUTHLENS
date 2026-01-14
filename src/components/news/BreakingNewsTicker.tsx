@@ -1,34 +1,61 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, ChevronRight } from 'lucide-react';
+import { AlertCircle, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 import { articles } from '@/data/mockData';
+import { Button } from '@/components/ui/button';
 
-export const BreakingNewsTicker = () => {
-  const breakingNews = articles.filter(a => a.isBreaking);
+interface BreakingNewsTickerProps {
+  maxHeadlines?: number;
+  autoSwipeInterval?: number;
+}
+
+export const BreakingNewsTicker = ({ 
+  maxHeadlines = 5, 
+  autoSwipeInterval = 5000 
+}: BreakingNewsTickerProps) => {
+  const breakingNews = articles.filter(a => a.isBreaking).slice(0, maxHeadlines);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+
+  const goToNext = useCallback(() => {
+    setCurrentIndex((prev) => (prev + 1) % breakingNews.length);
+  }, [breakingNews.length]);
+
+  const goToPrev = useCallback(() => {
+    setCurrentIndex((prev) => (prev - 1 + breakingNews.length) % breakingNews.length);
+  }, [breakingNews.length]);
 
   useEffect(() => {
-    if (breakingNews.length <= 1) return;
+    if (breakingNews.length <= 1 || !isAutoPlaying) return;
     
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % breakingNews.length);
-    }, 5000);
-
+    const interval = setInterval(goToNext, autoSwipeInterval);
     return () => clearInterval(interval);
-  }, [breakingNews.length]);
+  }, [breakingNews.length, isAutoPlaying, autoSwipeInterval, goToNext]);
 
   if (breakingNews.length === 0) return null;
 
   return (
     <div className="bg-accent text-accent-foreground">
-      <div className="container mx-auto flex items-center px-4 py-2">
-        <div className="flex items-center gap-2 bg-accent-foreground/10 px-3 py-1 rounded-full">
+      <div className="container mx-auto flex items-center px-4 py-2 gap-2">
+        <div className="flex items-center gap-2 bg-accent-foreground/10 px-3 py-1 rounded-full flex-shrink-0">
           <AlertCircle className="h-4 w-4 animate-pulse" />
-          <span className="text-xs font-bold uppercase tracking-wider">Breaking</span>
+          <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">Breaking</span>
         </div>
+
+        {/* Navigation Arrows */}
+        {breakingNews.length > 1 && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={goToPrev}
+            className="h-7 w-7 text-accent-foreground hover:bg-accent-foreground/20 flex-shrink-0"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        )}
         
-        <div className="ml-4 flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentIndex}
@@ -42,14 +69,39 @@ export const BreakingNewsTicker = () => {
                 className="flex items-center gap-2 text-sm font-medium hover:underline"
               >
                 <span className="line-clamp-1">{breakingNews[currentIndex].title}</span>
-                <ChevronRight className="h-4 w-4 flex-shrink-0" />
               </Link>
             </motion.div>
           </AnimatePresence>
         </div>
 
+        {/* Navigation Arrows */}
         {breakingNews.length > 1 && (
-          <div className="ml-4 flex gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={goToNext}
+            className="h-7 w-7 text-accent-foreground hover:bg-accent-foreground/20 flex-shrink-0"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
+
+        {/* Auto-play toggle */}
+        {breakingNews.length > 1 && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsAutoPlaying(!isAutoPlaying)}
+            className="h-7 w-7 text-accent-foreground hover:bg-accent-foreground/20 flex-shrink-0"
+            title={isAutoPlaying ? 'Pause auto-swipe' : 'Resume auto-swipe'}
+          >
+            {isAutoPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+          </Button>
+        )}
+
+        {/* Dots indicator */}
+        {breakingNews.length > 1 && (
+          <div className="flex gap-1 flex-shrink-0">
             {breakingNews.map((_, idx) => (
               <button
                 key={idx}

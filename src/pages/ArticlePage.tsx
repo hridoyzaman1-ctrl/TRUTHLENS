@@ -6,7 +6,7 @@ import { Clock, Eye, Share2, Facebook, Twitter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ArticleCard } from '@/components/news/ArticleCard';
-
+import { CommentSection } from '@/components/news/CommentSection';
 const ArticlePage = () => {
   const { slug } = useParams<{ slug: string }>();
   const article = articles.find(a => a.slug === slug);
@@ -120,6 +120,9 @@ const ArticlePage = () => {
               <Share2 className="h-4 w-4" />
             </Button>
           </div>
+
+          {/* Comments Section */}
+          <CommentSection articleId={article.id} />
         </div>
       </article>
 

@@ -37,11 +37,8 @@ export const Header = () => {
           </Button>
 
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <img src={logo} alt="TruthLens" className="h-10 w-auto" />
-            <span className="hidden font-display text-2xl font-bold text-foreground sm:inline">
-              TruthLens
-            </span>
+          <Link to="/" className="flex items-center">
+            <img src={logo} alt="TruthLens" className="h-12 w-auto" />
           </Link>
 
           {/* Desktop Navigation */}
@@ -114,19 +111,26 @@ export const Header = () => {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="border-t border-border lg:hidden overflow-hidden"
+            className="absolute top-full left-0 right-0 border-t border-border lg:hidden overflow-hidden bg-background shadow-lg z-50"
           >
             <nav className="container mx-auto flex flex-col px-4 py-4">
               {categories.map((category) => (
                 <Link
                   key={category.id}
                   to={`/category/${category.id}`}
-                  className="border-b border-border py-3 text-sm font-medium text-foreground"
+                  className="border-b border-border py-3 text-sm font-medium text-foreground hover:text-primary transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {category.name}
                 </Link>
               ))}
+              <Link
+                to="/internship"
+                className="border-b border-border py-3 text-sm font-semibold text-accent hover:text-accent/80"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                🎓 Apply for Internship
+              </Link>
               <Link
                 to="/about"
                 className="border-b border-border py-3 text-sm font-medium text-foreground"
