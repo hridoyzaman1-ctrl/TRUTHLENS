@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { BreakingNewsTicker } from '@/components/news/BreakingNewsTicker';
 import { HeroSection } from '@/components/news/HeroSection';
@@ -9,18 +10,33 @@ import { VideoSection } from '@/components/news/VideoSection';
 import { NewsletterSignup } from '@/components/news/NewsletterSignup';
 import { InternshipBanner } from '@/components/news/InternshipBanner';
 import { HomepageComments } from '@/components/news/HomepageComments';
-import { articles } from '@/data/mockData';
+import { getArticles } from '@/lib/articleService';
 import { ArticleCard } from '@/components/news/ArticleCard';
+import { Article } from '@/types/news';
 
 const Index = () => {
+  const [currentArticles, setCurrentArticles] = useState<Article[]>([]);
+
+  const fetchArticles = () => {
+    setCurrentArticles(getArticles());
+  };
+
+  useEffect(() => {
+    fetchArticles();
+
+    // Listen for updates from other tabs/admin panel
+    window.addEventListener('articlesUpdated', fetchArticles);
+    return () => window.removeEventListener('articlesUpdated', fetchArticles);
+  }, []);
+
   return (
     <Layout>
       <BreakingNewsTicker />
       <HeroSection />
-      
+
       {/* Video Stories Section */}
       <VideoSection />
-      
+
       <section className="py-8">
         <div className="container mx-auto px-4">
           <div className="grid gap-8 lg:grid-cols-3">
@@ -30,12 +46,12 @@ const Index = () => {
                 Latest Stories
               </h2>
               <div className="grid gap-4 sm:grid-cols-2">
-                {articles.slice(0, 6).map((article) => (
+                {currentArticles.slice(0, 6).map((article) => (
                   <ArticleCard key={article.id} article={article} />
                 ))}
               </div>
             </div>
-            
+
             {/* Sidebar */}
             <div className="space-y-6">
               <TrendingSidebar />
@@ -52,10 +68,10 @@ const Index = () => {
       <InternshipBanner />
 
       <CategorySection category="untold-stories" title="Untold Stories" />
-      
+
       {/* Sports Section */}
       <CategorySection category="sports" title="Sports" />
-      
+
       {/* Entertainment Section */}
       <CategorySection category="entertainment" title="Entertainment" />
 

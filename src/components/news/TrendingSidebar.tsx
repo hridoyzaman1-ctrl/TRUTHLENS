@@ -1,21 +1,54 @@
-import { useState, useEffect } from 'react';
-import { articles } from '@/data/mockData';
+import { useState, useEffect, useCallback } from 'react';
+import { getArticles } from '@/lib/articleService';
+import { Article } from '@/types/news';
 import { ArticleCard } from './ArticleCard';
 import { TrendingUp, Eye } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getSectionsSettings } from '@/lib/settingsService';
+
+// Default sections definition for fallback
+const defaultSections = [
+  { id: 'trending', name: 'Trending Now', enabled: true, order: 5, maxArticles: 5, selectedArticleIds: [], showOnHomepage: true }
+];
 
 export const TrendingSidebar = () => {
+  const [articlesList, setArticlesList] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  const trendingArticles = [...articles]
-    .sort((a, b) => b.views - a.views)
-    .slice(0, 5);
 
-  // Simulate loading
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 600);
-    return () => clearTimeout(timer);
+  const fetchData = useCallback(() => {
+    setArticlesList(getArticles());
   }, []);
+
+  // Load data and simulate minimal loading state
+  useEffect(() => {
+    fetchData();
+    window.addEventListener('articlesUpdated', fetchData);
+    window.addEventListener('sectionsSettingsUpdated', fetchData);
+
+    const timer = setTimeout(() => setIsLoading(false), 600);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('articlesUpdated', fetchData);
+      window.removeEventListener('sectionsSettingsUpdated', fetchData);
+    };
+  }, [fetchData]);
+
+  // Get trending section settings
+  const sections = getSectionsSettings(defaultSections as any);
+  const trendingSection = sections.find(s => s.id === 'trending');
+
+  // If we have selected articles in settings, use those. Otherwise fallback to top viewed.
+  let trendingArticles: Article[] = [];
+  if (trendingSection && trendingSection.selectedArticleIds.length > 0) {
+    trendingArticles = trendingSection.selectedArticleIds
+      .map(id => articlesList.find(a => a.id === id))
+      .filter((a): a is Article => !!a);
+  } else {
+    // Fallback: sort by views
+    trendingArticles = [...articlesList]
+      .sort((a, b) => b.views - a.views)
+      .slice(0, 5);
+  }
 
   if (isLoading) {
     return (
@@ -46,7 +79,7 @@ export const TrendingSidebar = () => {
         <TrendingUp className="h-5 w-5 text-accent" />
         <h3 className="font-display text-lg font-bold text-foreground">Trending Now</h3>
       </div>
-      
+
       <div className="space-y-1">
         {trendingArticles.map((article, index) => (
           <div key={article.id} className="flex items-start gap-3">

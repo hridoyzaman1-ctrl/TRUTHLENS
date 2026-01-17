@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Save, Newspaper, Layout, Settings2, X, Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,8 +7,9 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { articles } from '@/data/mockData';
-import { featuredSettings as initialSettings } from '@/data/adminMockData';
+import { getArticles } from '@/lib/articleService';
+import { Article } from '@/types/news';
+import { FeaturedSettings, getFeaturedSettings, saveFeaturedSettings } from '@/lib/settingsService';
 import { toast } from 'sonner';
 import {
   DndContext,
@@ -59,102 +60,154 @@ const DraggableArticle = ({ id, index, article, showImage, onRemove, getCategory
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex items-center gap-1.5 sm:gap-2 p-2 bg-card border border-border rounded-lg touch-manipulation',
-        isDragging && 'z-50 opacity-90 shadow-lg scale-[1.02] bg-muted'
+        'group relative flex items-start sm:items-center gap-3 p-3 bg-card border border-border rounded-xl shadow-sm transition-all hover:shadow-md touch-manipulation',
+        isDragging ? 'z-50 opacity-90 shadow-xl scale-[1.02] bg-accent/50 border-primary/50' : 'hover:border-primary/20'
       )}
     >
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/0 group-hover:bg-primary/20 transition-colors rounded-l-xl" />
+
       <button
         type="button"
         className={cn(
-          'flex-shrink-0 p-1 rounded cursor-grab active:cursor-grabbing touch-manipulation',
-          'hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary',
-          isDragging && 'cursor-grabbing'
+          'flex-shrink-0 p-2 -ml-1 rounded-lg cursor-grab active:cursor-grabbing touch-manipulation',
+          'hover:bg-muted text-muted-foreground hover:text-foreground transition-colors',
+          'focus:outline-none focus:ring-2 focus:ring-primary/20',
+          isDragging && 'cursor-grabbing text-primary'
         )}
         {...attributes}
         {...listeners}
       >
-        <GripVertical className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+        <GripVertical className="h-5 w-5" />
       </button>
-      <span className="text-[10px] sm:text-xs font-bold text-muted-foreground w-4 sm:w-6 flex-shrink-0">{index + 1}</span>
+
+      <span className="text-3xl font-black italic text-muted-foreground/20 group-hover:text-primary/20 transition-colors select-none">
+        #{index + 1}
+      </span>
+
       {showImage && article.featuredImage && (
-        <img 
-          src={article.featuredImage} 
-          alt="" 
-          className="w-10 h-7 sm:w-12 sm:h-8 object-cover rounded flex-shrink-0"
-        />
+        <div className="h-10 w-14 sm:h-12 sm:w-20 flex-shrink-0 overflow-hidden rounded-md bg-muted shadow-sm">
+          <img
+            src={article.featuredImage}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        </div>
       )}
-      <div className="flex-1 min-w-0">
-        <p className="text-xs sm:text-sm font-medium truncate">{article.title}</p>
-        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-          <Badge className={`${getCategoryColor(article.category)} text-white text-[9px] sm:text-[10px] border-0`}>
+
+      <div className="flex-1 min-w-0 py-0.5">
+        <p className="text-sm font-semibold text-foreground line-clamp-2 pr-6 leading-tight break-words">{article.title}</p>
+        <div className="flex items-center gap-2 mt-1.5">
+          <Badge className={`${getCategoryColor(article.category)} text-white text-[10px] border-0 h-5 px-1.5 shadow-none`}>
             {article.category}
           </Badge>
           {article.hasVideo && (
-            <Badge variant="outline" className="text-[9px] sm:text-[10px]">Video</Badge>
+            <Badge variant="outline" className="text-[10px] h-5 px-1.5 bg-background/50">Video</Badge>
           )}
         </div>
       </div>
-      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 flex-shrink-0" onClick={onRemove}>
-        <X className="h-3 w-3 sm:h-4 sm:w-4" />
+
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 absolute right-2 top-2 sm:relative sm:top-auto sm:right-auto transition-colors"
+        onClick={onRemove}
+      >
+        <X className="h-4 w-4" />
       </Button>
     </div>
   );
 };
 
-const DragOverlayItem = ({ article, showImage, getCategoryColor }: { 
+const DragOverlayItem = ({ article, showImage, getCategoryColor }: {
   article: { title: string; category: string; featuredImage?: string; hasVideo?: boolean };
   showImage?: boolean;
   getCategoryColor: (category: string) => string;
 }) => (
-  <div className="flex items-center gap-1.5 sm:gap-2 p-2 bg-card border-2 border-primary rounded-lg shadow-xl opacity-95">
-    <GripVertical className="h-3 w-3 sm:h-4 sm:w-4 text-primary flex-shrink-0" />
-    <span className="text-[10px] sm:text-xs font-bold text-muted-foreground w-4 sm:w-6 flex-shrink-0">•</span>
+  <div className="relative flex items-center gap-3 p-3 bg-card border-2 border-primary rounded-lg shadow-xl opacity-95 max-w-[calc(100vw-2rem)] overflow-hidden">
+    <GripVertical className="h-4 w-4 text-primary" />
+    <span className="text-xs font-bold text-muted-foreground w-4 flex-shrink-0 text-center">•</span>
+
     {showImage && article.featuredImage && (
-      <img 
-        src={article.featuredImage} 
-        alt="" 
-        className="w-10 h-7 sm:w-12 sm:h-8 object-cover rounded flex-shrink-0"
+      <img
+        src={article.featuredImage}
+        alt=""
+        className="w-10 h-10 object-cover rounded flex-shrink-0 bg-muted"
       />
     )}
+
     <div className="flex-1 min-w-0">
-      <p className="text-xs sm:text-sm font-medium truncate">{article.title}</p>
-      <Badge className={`${getCategoryColor(article.category)} text-white text-[9px] sm:text-[10px] border-0`}>
-        {article.category}
-      </Badge>
+      <p className="text-sm font-medium line-clamp-2 pr-6 leading-tight break-words">{article.title}</p>
+      <div className="flex items-center gap-2 mt-1">
+        <Badge className={`${getCategoryColor(article.category)} text-white text-[10px] border-0 h-5 px-1.5`}>
+          {article.category}
+        </Badge>
+        {article.hasVideo && (
+          <Badge variant="outline" className="text-[9px] h-5 px-1.5">Video</Badge>
+        )}
+      </div>
     </div>
   </div>
 );
 
 const AdminFeatured = () => {
-  const [settings, setSettings] = useState(initialSettings);
+  const [articlesList, setArticlesList] = useState<Article[]>([]);
+  const [settings, setSettings] = useState<FeaturedSettings>(getFeaturedSettings());
   const [breakingNewsIds, setBreakingNewsIds] = useState<string[]>(settings.breakingNewsIds);
   const [heroFeaturedIds, setHeroFeaturedIds] = useState<string[]>(settings.heroFeaturedIds);
+  const [heroSideArticleIds, setHeroSideArticleIds] = useState<string[]>(settings.heroSideArticleIds || []);
 
-  const availableArticles = articles.filter(a => a.status === 'published');
+  useEffect(() => {
+    const loadArticles = () => setArticlesList(getArticles());
+    loadArticles();
+
+    window.addEventListener('articlesUpdated', loadArticles);
+    return () => window.removeEventListener('articlesUpdated', loadArticles);
+  }, []);
+
+  // Allow all articles (drafts, scheduled, published) to be featured, except rejected ones
+  const availableArticles = articlesList.filter(a => (a.status as string) !== 'rejected');
 
   const getArticleById = (id: string) => availableArticles.find(a => a.id === id);
 
   const addToBreakingNews = (id: string) => {
     if (!breakingNewsIds.includes(id) && breakingNewsIds.length < settings.maxBreakingNews) {
-      setBreakingNewsIds([...breakingNewsIds, id]);
+      setBreakingNewsIds(prev => [...prev, id]);
     }
   };
 
   const removeFromBreakingNews = (id: string) => {
-    setBreakingNewsIds(breakingNewsIds.filter(i => i !== id));
+    setBreakingNewsIds(prev => prev.filter(i => i !== id));
   };
 
   const addToHeroFeatured = (id: string) => {
     if (!heroFeaturedIds.includes(id) && heroFeaturedIds.length < settings.maxHeroArticles) {
-      setHeroFeaturedIds([...heroFeaturedIds, id]);
+      setHeroFeaturedIds(prev => [...prev, id]);
     }
   };
 
   const removeFromHeroFeatured = (id: string) => {
-    setHeroFeaturedIds(heroFeaturedIds.filter(i => i !== id));
+    setHeroFeaturedIds(prev => prev.filter(i => i !== id));
+  };
+
+  const addToSideArticles = (id: string) => {
+    if (!heroSideArticleIds.includes(id) && heroSideArticleIds.length < 4) {
+      setHeroSideArticleIds(prev => [...prev, id]);
+    }
+  };
+
+  const removeFromSideArticles = (id: string) => {
+    setHeroSideArticleIds(prev => prev.filter(i => i !== id));
   };
 
   const handleSave = () => {
+    const newSettings: FeaturedSettings = {
+      ...settings,
+      breakingNewsIds,
+      heroFeaturedIds,
+      heroSideArticleIds
+    };
+    saveFeaturedSettings(newSettings);
+    setSettings(newSettings);
     toast.success('Featured settings saved successfully');
   };
 
@@ -268,7 +321,7 @@ const AdminFeatured = () => {
 
             {/* Selected Articles with Drag-and-Drop */}
             <div>
-              <Label className="text-xs sm:text-sm font-medium">Selected Breaking News</Label>
+              <Label className="text-xs sm:text-sm font-medium">Selected Breaking News Articles</Label>
               <DndContext
                 sensors={breakingSortable.sensors}
                 collisionDetection={closestCenter}
@@ -318,7 +371,10 @@ const AdminFeatured = () => {
                       .filter(a => !breakingNewsIds.includes(a.id))
                       .map((article) => (
                         <SelectItem key={article.id} value={article.id}>
-                          <span className="truncate">{article.title}</span>
+                          <span className="truncate">
+                            {article.title}
+                            {article.status !== 'published' && <span className="text-xs text-muted-foreground ml-2">({article.status})</span>}
+                          </span>
                         </SelectItem>
                       ))}
                   </SelectContent>
@@ -424,7 +480,10 @@ const AdminFeatured = () => {
                       .filter(a => !heroFeaturedIds.includes(a.id))
                       .map((article) => (
                         <SelectItem key={article.id} value={article.id}>
-                          <span className="truncate">{article.title}</span>
+                          <span className="truncate">
+                            {article.title}
+                            {article.status !== 'published' && <span className="text-xs text-muted-foreground ml-2">({article.status})</span>}
+                          </span>
                         </SelectItem>
                       ))}
                   </SelectContent>
@@ -437,6 +496,69 @@ const AdminFeatured = () => {
 
       {/* Preview Info */}
       <Card className="mt-6">
+        <CardHeader className="pb-3 px-3 sm:px-6">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Layout className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+              <CardTitle className="text-sm sm:text-base truncate">Hero Side Articles</CardTitle>
+            </div>
+            <Badge variant="outline" className="text-xs flex-shrink-0">{heroSideArticleIds.length}/4</Badge>
+          </div>
+          <CardDescription className="text-xs sm:text-sm">
+            Articles displayed on the right side of the hero section
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-6 space-y-4">
+          {/* Selected Side Articles */}
+          <div className="space-y-2">
+            {heroSideArticleIds.map((id, index) => {
+              const article = getArticleById(id);
+              if (!article) return null;
+              return (
+                <div key={id} className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg">
+                  <span className="text-lg font-bold text-muted-foreground">#{index + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{article.title}</p>
+                    <Badge className={`${getCategoryColor(article.category)} text-white text-[10px] border-0 mt-1`}>
+                      {article.category}
+                    </Badge>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => removeFromSideArticles(id)} className="text-destructive">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Add Side Article */}
+          {heroSideArticleIds.length < 4 && (
+            <div>
+              <Label className="text-sm text-muted-foreground">Add Side Article</Label>
+              <Select onValueChange={addToSideArticles}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select an article to add..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableArticles
+                    .filter(a => !heroSideArticleIds.includes(a.id) && !heroFeaturedIds.includes(a.id))
+                    .map((article) => (
+                      <SelectItem key={article.id} value={article.id}>
+                        <span className="truncate">
+                          {article.title}
+                          {article.status !== 'published' && <span className="text-xs text-muted-foreground ml-2">({article.status})</span>}
+                        </span>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Quick Tips */}
+      <Card className="mt-6">
         <CardHeader>
           <div className="flex items-center gap-2">
             <Settings2 className="h-5 w-5 text-primary" />
@@ -444,11 +566,13 @@ const AdminFeatured = () => {
           </div>
         </CardHeader>
         <CardContent>
+
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li>• <strong>Drag articles</strong> to reorder their display priority</li>
             <li>• <strong>On mobile:</strong> Touch and hold, then drag to reorder</li>
             <li>• Breaking news appears in the red ticker at the top of the page</li>
             <li>• Hero articles are featured in the main carousel with large images</li>
+            <li>• <strong>Side articles</strong> appear on the right side of the hero section</li>
             <li>• Changes will be reflected immediately after saving</li>
           </ul>
         </CardContent>

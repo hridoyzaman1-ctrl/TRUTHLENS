@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { jobs as initialJobs } from '@/data/mockData';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -37,6 +36,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useTouchSortable } from '@/hooks/useTouchSortable';
 import { cn } from '@/lib/utils';
+import { getJobs, saveJobs } from '@/lib/jobService';
 
 // Draggable Job Card Component
 const DraggableJobCard = ({ job, onToggleStatus, onEdit, onDelete }: {
@@ -60,7 +60,7 @@ const DraggableJobCard = ({ job, onToggleStatus, onEdit, onDelete }: {
   };
 
   return (
-    <div 
+    <div
       ref={setNodeRef}
       style={style}
       className={cn(
@@ -138,7 +138,7 @@ const JobDragOverlay = ({ job }: { job: Job }) => (
 );
 
 const AdminJobs = () => {
-  const [jobsList, setJobsList] = useState<Job[]>(initialJobs);
+  const [jobsList, setJobsList] = useState<Job[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [formData, setFormData] = useState({
@@ -150,6 +150,11 @@ const AdminJobs = () => {
     deadline: '',
     isOpen: true
   });
+
+  // Load jobs on mount
+  useEffect(() => {
+    setJobsList(getJobs());
+  }, []);
 
   const openCreateDialog = () => {
     setEditingJob(null);
@@ -183,21 +188,22 @@ const AdminJobs = () => {
     e.preventDefault();
     const requirements = formData.requirements.split('\n').filter(r => r.trim());
 
+    let updatedList: Job[];
     if (editingJob) {
-      setJobsList(prev => prev.map(job => 
-        job.id === editingJob.id 
+      updatedList = jobsList.map(job =>
+        job.id === editingJob.id
           ? {
-              ...job,
-              title: formData.title,
-              department: formData.department,
-              type: formData.type,
-              description: formData.description,
-              requirements,
-              deadline: new Date(formData.deadline),
-              isOpen: formData.isOpen
-            }
+            ...job,
+            title: formData.title,
+            department: formData.department,
+            type: formData.type,
+            description: formData.description,
+            requirements,
+            deadline: new Date(formData.deadline),
+            isOpen: formData.isOpen
+          }
           : job
-      ));
+      );
       toast.success('Job updated successfully!');
     } else {
       const newJob: Job = {
@@ -211,24 +217,30 @@ const AdminJobs = () => {
         isOpen: formData.isOpen,
         createdAt: new Date()
       };
-      setJobsList(prev => [newJob, ...prev]);
+      updatedList = [newJob, ...jobsList];
       toast.success('Job created successfully!');
     }
 
+    setJobsList(updatedList);
+    saveJobs(updatedList);
     setIsDialogOpen(false);
   };
 
   const handleDelete = (id: string) => {
     if (window.confirm('Are you sure you want to delete this job?')) {
-      setJobsList(prev => prev.filter(job => job.id !== id));
+      const updatedList = jobsList.filter(job => job.id !== id);
+      setJobsList(updatedList);
+      saveJobs(updatedList);
       toast.success('Job deleted successfully!');
     }
   };
 
   const toggleJobStatus = (id: string) => {
-    setJobsList(prev => prev.map(job => 
+    const updatedList = jobsList.map(job =>
       job.id === id ? { ...job, isOpen: !job.isOpen } : job
-    ));
+    );
+    setJobsList(updatedList);
+    saveJobs(updatedList);
     toast.success('Job status updated!');
   };
 
@@ -238,6 +250,7 @@ const AdminJobs = () => {
     getItemId: (job) => job.id,
     onReorder: (newJobs) => {
       setJobsList(newJobs);
+      saveJobs(newJobs);
       toast.success('Job order updated');
     },
   });

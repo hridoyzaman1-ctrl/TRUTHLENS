@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { getYoutubeId } from '@/lib/videoUtils';
 
 interface VideoPlayerModalProps {
   isOpen: boolean;
@@ -11,18 +12,11 @@ interface VideoPlayerModalProps {
 }
 
 export const VideoPlayerModal = ({ isOpen, onClose, videoUrl, title }: VideoPlayerModalProps) => {
-  // Convert YouTube URL to embed format if needed
+  // Convert YouTube URL to embed format using robust utility
   const getEmbedUrl = (url: string) => {
-    if (url.includes('youtube.com/watch')) {
-      const videoId = url.split('v=')[1]?.split('&')[0];
-      return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-    }
-    if (url.includes('youtu.be/')) {
-      const videoId = url.split('youtu.be/')[1]?.split('?')[0];
-      return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-    }
-    if (url.includes('youtube.com/embed')) {
-      return url.includes('autoplay') ? url : `${url}?autoplay=1`;
+    const id = getYoutubeId(url);
+    if (id) {
+      return `https://www.youtube.com/embed/${id}?autoplay=1`;
     }
     return url;
   };

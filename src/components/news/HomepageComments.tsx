@@ -1,56 +1,57 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, ThumbsUp, Clock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { articles } from '@/data/mockData';
+import { getArticles } from '@/lib/articleService';
 import { formatDistanceToNow } from 'date-fns';
 
-// Mock comments data
+// Mock comments data linked to real articles
 const recentComments = [
   {
     id: '1',
-    articleId: '1',
-    articleTitle: 'Global Climate Summit Reaches Historic Agreement',
-    author: 'John D.',
-    avatar: 'https://ui-avatars.com/api/?name=John+D&background=random',
-    content: 'This is exactly the kind of leadership we need. Finally, world leaders are taking climate change seriously!',
-    likes: 24,
-    createdAt: new Date('2026-01-14T09:30:00')
+    articleId: '5',
+    articleTitle: 'Why hospital bills scare Dhaka patients more than disease',
+    author: 'Rahim Uddin',
+    avatar: 'https://ui-avatars.com/api/?name=Rahim+U&background=random',
+    content: 'This is the reality for so many middle-class families. The costs are simply unsustainable.',
+    likes: 156,
+    createdAt: new Date('2026-01-17T11:30:00')
   },
   {
     id: '2',
-    articleId: '3',
-    articleTitle: 'Inside the Lives of Migrant Workers',
-    author: 'Sarah M.',
-    avatar: 'https://ui-avatars.com/api/?name=Sarah+M&background=random',
-    content: 'Powerful storytelling. These are the stories that need more attention in mainstream media.',
-    likes: 18,
-    createdAt: new Date('2026-01-14T08:15:00')
+    articleId: '7',
+    articleTitle: 'Toxic waste in our rivers: Stop this threat immediately',
+    author: 'Fatima Begum',
+    avatar: 'https://ui-avatars.com/api/?name=Fatima+B&background=random',
+    content: 'We see the pollution every day. When will the authorities actually enforce the laws?',
+    likes: 89,
+    createdAt: new Date('2026-01-17T08:45:00')
   },
   {
     id: '3',
-    articleId: '10',
-    articleTitle: 'World Cup Final: Historic Victory',
-    author: 'Mike R.',
-    avatar: 'https://ui-avatars.com/api/?name=Mike+R&background=random',
-    content: 'What an incredible match! The underdog story of this tournament will be remembered for years.',
-    likes: 45,
-    createdAt: new Date('2026-01-14T11:00:00')
+    articleId: '9',
+    articleTitle: 'Watch / No more silence: Akram urges BCB to show courage',
+    author: 'Cricket Fan BD',
+    avatar: 'https://ui-avatars.com/api/?name=CF&background=random',
+    content: 'Akram Bhai is right. We need strong leadership in BCB now more than ever.',
+    likes: 243,
+    createdAt: new Date('2026-01-17T12:15:00')
   },
   {
     id: '4',
-    articleId: '4',
-    articleTitle: 'Tech Giants Face New Regulations',
-    author: 'Emily K.',
-    avatar: 'https://ui-avatars.com/api/?name=Emily+K&background=random',
-    content: 'Finally some accountability! Our data privacy has been at risk for far too long.',
-    likes: 32,
-    createdAt: new Date('2026-01-13T16:45:00')
+    articleId: '10',
+    articleTitle: 'In Focus / The untold history of why Khaleda Zia entered politics',
+    author: 'History Buff',
+    avatar: 'https://ui-avatars.com/api/?name=HB&background=random',
+    content: 'A fascinating look back. Her journey was far from easy given the political climate of that time.',
+    likes: 112,
+    createdAt: new Date('2026-01-15T16:20:00')
   }
 ];
 
 export const HomepageComments = () => {
   const getArticleSlug = (articleId: string) => {
+    const articles = getArticles();
     const article = articles.find(a => a.id === articleId);
     return article?.slug || '';
   };

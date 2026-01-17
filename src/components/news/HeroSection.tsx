@@ -2,24 +2,59 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Eye, ChevronLeft, ChevronRight, Pause, Play, PlayCircle } from 'lucide-react';
-import { articles } from '@/data/mockData';
+import { getArticles } from '@/lib/articleService';
+import { Article } from '@/types/news';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
+import { getYoutubeThumbnail, FALLBACK_IMAGE } from '@/lib/videoUtils';
+
+import { getFeaturedSettings } from '@/lib/settingsService';
 
 export const HeroSection = () => {
-  const featuredArticles = articles.filter(a => a.isFeatured && a.showOnHomepage).slice(0, 6);
-  const sideArticles = articles.filter(a => !a.isFeatured).slice(0, 4);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [articlesList, setArticlesList] = useState<Article[]>([]);
+  const [settings, setSettings] = useState(getFeaturedSettings());
   const [isLoading, setIsLoading] = useState(true);
 
-  // Simulate initial loading
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
+  const fetchArticles = useCallback(() => {
+    setArticlesList(getArticles());
+    setSettings(getFeaturedSettings());
   }, []);
+
+  // Load data and listen for updates
+  useEffect(() => {
+    // Initial fetch
+    fetchArticles();
+    // Simulate slight loading for skeleton demo (optional, but keeps UI smooth)
+    const timer = setTimeout(() => setIsLoading(false), 500);
+
+    window.addEventListener('articlesUpdated', fetchArticles);
+    window.addEventListener('featuredSettingsUpdated', fetchArticles);
+
+    return () => {
+      window.removeEventListener('articlesUpdated', fetchArticles);
+      window.removeEventListener('featuredSettingsUpdated', fetchArticles);
+      clearTimeout(timer);
+    };
+  }, [fetchArticles]);
+
+  // Order articles based on settings.heroFeaturedIds
+  const featuredArticles = settings.heroFeaturedIds
+    .map(id => articlesList.find(a => a.id === id))
+    .filter((a): a is Article => !!a); // Filter out undefined if an article was deleted
+
+  // Fallback if no hero articles selected
+  if (featuredArticles.length === 0 && articlesList.length > 0) {
+    // Logic for fallback can stay or we just show nothing.
+    // The original code fell back to "articlesList.slice(0, 5)".
+  }
+
+  // Use settings for auto swipe
+  const { heroAutoSwipe = true, autoSwipeInterval = 6000 } = settings;
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(heroAutoSwipe);
 
   const goToNext = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % featuredArticles.length);
@@ -31,10 +66,30 @@ export const HeroSection = () => {
 
   useEffect(() => {
     if (featuredArticles.length <= 1 || !isAutoPlaying) return;
-    
-    const interval = setInterval(goToNext, 6000);
+
+    const interval = setInterval(goToNext, autoSwipeInterval);
     return () => clearInterval(interval);
-  }, [featuredArticles.length, isAutoPlaying, goToNext]);
+  }, [featuredArticles.length, isAutoPlaying, goToNext, autoSwipeInterval]);
+
+  // Define sideArticles: Use settings.heroSideArticleIds or fallback
+  const sideArticles = (settings.heroSideArticleIds || [])
+    .map(id => articlesList.find(a => a.id === id))
+    .filter((a): a is Article => !!a)
+    .slice(0, 4);
+
+  // Fallback if no side articles configured
+  const displaySideArticles = sideArticles.length > 0
+    ? sideArticles
+    : articlesList.filter(a => !settings.heroFeaturedIds.includes(a.id)).slice(0, 4);
+
+  const getDisplayImage = (article: Article) => {
+    if (article.featuredImage) return article.featuredImage;
+    if (article.videoUrl) {
+      const thumb = getYoutubeThumbnail(article.videoUrl);
+      if (thumb) return thumb;
+    }
+    return FALLBACK_IMAGE;
+  };
 
   if (featuredArticles.length === 0 && !isLoading) return null;
 
@@ -60,7 +115,7 @@ export const HeroSection = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Side Articles Skeleton */}
             <div className="flex flex-col gap-3">
               {[1, 2, 3, 4].map((i) => (
@@ -118,14 +173,15 @@ export const HeroSection = () => {
                   <Link to={`/article/${currentArticle.slug}`} className="group relative block">
                     <div className="aspect-[16/10] lg:aspect-[16/9]">
                       <img
-                        src={currentArticle.featuredImage}
+                        src={getDisplayImage(currentArticle)}
                         alt={currentArticle.title}
                         className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                         loading="eager"
+                        onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
                       />
                     </div>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-                    
+
                     {/* Video indicator */}
                     {currentArticle.hasVideo && (
                       <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/60 px-3 py-1.5 rounded-full">
@@ -191,15 +247,14 @@ export const HeroSection = () => {
                         <button
                           key={idx}
                           onClick={() => setCurrentIndex(idx)}
-                          className={`h-2 w-2 rounded-full transition-all duration-300 ${
-                            idx === currentIndex 
-                              ? 'bg-white w-6' 
-                              : 'bg-white/50 hover:bg-white/70'
-                          }`}
+                          className={`h-2 w-2 rounded-full transition-all duration-300 ${idx === currentIndex
+                            ? 'bg-white w-6'
+                            : 'bg-white/50 hover:bg-white/70'
+                            }`}
                         />
                       ))}
                     </div>
-                    
+
                     {/* Play/Pause */}
                     <Button
                       variant="ghost"
@@ -224,7 +279,7 @@ export const HeroSection = () => {
 
           {/* Side Articles */}
           <div className="flex flex-col gap-3">
-            {sideArticles.map((article, index) => (
+            {displaySideArticles.map((article, index) => (
               <motion.div
                 key={article.id}
                 initial={{ opacity: 0, x: 20 }}
@@ -237,10 +292,11 @@ export const HeroSection = () => {
                 >
                   <div className="h-20 w-28 flex-shrink-0 overflow-hidden rounded-md md:h-20 md:w-28 relative">
                     <img
-                      src={article.featuredImage}
+                      src={getDisplayImage(article)}
                       alt={article.title}
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       loading="lazy"
+                      onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
                     />
                     {article.hasVideo && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/30">

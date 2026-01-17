@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
-import { articles } from '@/data/mockData';
+import { getArticles } from '@/lib/articleService';
+import { Article } from '@/types/news';
 import { ArticleCard } from './ArticleCard';
 import { Category } from '@/types/news';
 
@@ -11,7 +13,18 @@ interface CategorySectionProps {
 }
 
 export const CategorySection = ({ category, title, showMore = true }: CategorySectionProps) => {
-  const categoryArticles = articles.filter(a => a.category === category).slice(0, 4);
+  const [articlesList, setArticlesList] = useState<Article[]>([]);
+
+  useEffect(() => {
+    setArticlesList(getArticles());
+
+    // Listen for updates
+    const handleUpdate = () => setArticlesList(getArticles());
+    window.addEventListener('articlesUpdated', handleUpdate);
+    return () => window.removeEventListener('articlesUpdated', handleUpdate);
+  }, []);
+
+  const categoryArticles = articlesList.filter(a => a.category === category).slice(0, 4);
 
   if (categoryArticles.length === 0) return null;
 
@@ -32,7 +45,7 @@ export const CategorySection = ({ category, title, showMore = true }: CategorySe
             </Link>
           )}
         </div>
-        
+
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {categoryArticles.map((article) => (
             <ArticleCard key={article.id} article={article} variant="compact" />

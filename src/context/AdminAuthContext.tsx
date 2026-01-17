@@ -1,74 +1,30 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AdminRole, AdminUser, RolePermissions, ROLE_PERMISSIONS, hasPermission } from '@/types/admin';
+import { userService, ExtendedAdminUser } from '@/lib/userService';
+
+// Export ExtendedAdminUser as AdminUser for compatibility where needed, or just extend the type
+export type { ExtendedAdminUser };
 
 interface AdminAuthContextType {
-  currentUser: AdminUser | null;
+  currentUser: ExtendedAdminUser | null;
   isAuthenticated: boolean;
   login: (email: string, password: string, rememberMe?: boolean) => boolean;
   logout: () => void;
   hasPermission: (permission: keyof RolePermissions) => boolean;
   canAccessPath: (path: string) => boolean;
-  updateCurrentUser: (user: AdminUser) => void;
+  updateCurrentUser: (user: ExtendedAdminUser) => void;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
 
-// Mock admin users for demo
-const MOCK_ADMIN_USERS: Record<string, { password: string; user: Omit<AdminUser, 'id'> }> = {
-  'admin@truthlens.com': {
-    password: 'admin123',
-    user: {
-      name: 'Admin User',
-      email: 'admin@truthlens.com',
-      role: 'admin',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
-      isActive: true,
-      createdAt: new Date('2024-01-01'),
-    },
-  },
-  'editor@truthlens.com': {
-    password: 'editor123',
-    user: {
-      name: 'Sarah Editor',
-      email: 'editor@truthlens.com',
-      role: 'editor',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100',
-      isActive: true,
-      createdAt: new Date('2024-02-01'),
-    },
-  },
-  'author@truthlens.com': {
-    password: 'author123',
-    user: {
-      name: 'John Author',
-      email: 'author@truthlens.com',
-      role: 'author',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
-      isActive: true,
-      createdAt: new Date('2024-03-01'),
-    },
-  },
-  'journalist@truthlens.com': {
-    password: 'journalist123',
-    user: {
-      name: 'Emily Journalist',
-      email: 'journalist@truthlens.com',
-      role: 'journalist',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
-      isActive: true,
-      createdAt: new Date('2024-03-15'),
-    },
-  },
-};
-
 // Path to permission mapping
 const PATH_PERMISSIONS: Record<string, keyof RolePermissions | 'always'> = {
-  '/admin': 'always', // Dashboard - always accessible but content varies
+  '/admin': 'always',
   '/admin/featured': 'manageFeatured',
   '/admin/sections': 'manageSections',
   '/admin/menu': 'manageMenu',
   '/admin/editorial': 'manageEditorial',
-  '/admin/articles': 'always', // Always accessible but features vary
+  '/admin/articles': 'always',
   '/admin/comments': 'viewAllComments',
   '/admin/contact-info': 'manageContactInfo',
   '/admin/categories': 'manageCategories',
@@ -76,19 +32,25 @@ const PATH_PERMISSIONS: Record<string, keyof RolePermissions | 'always'> = {
   '/admin/users': 'manageUsers',
   '/admin/jobs': 'manageJobs',
   '/admin/settings': 'manageSettings',
+  '/admin/profile': 'always', // Allow profile access
 };
 
 export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<ExtendedAdminUser | null>(null);
 
   // Load user from storage on mount
   useEffect(() => {
+    // userService.init() is called in the module, so users should be ready
     const storedUser = localStorage.getItem('adminUser') || sessionStorage.getItem('adminUser');
     if (storedUser) {
       try {
         const parsed = JSON.parse(storedUser);
-        // Ensure date is properly restored
         parsed.createdAt = new Date(parsed.createdAt);
+        // Refresh from "DB" to get latest updates if they changed in another session
+        // But for local single-user this is fine. Ideally we fetch fresh from userService
+        const freshUser = userService.authenticate(parsed.email, 'admin123'); // Hack: we don't have password here. 
+        // Better: just use storedUser, but if we want to reflect updates from other tabs we'd need event listeners.
+        // For simplicity, rely on storedUser but re-save on updates.
         setCurrentUser(parsed);
       } catch {
         localStorage.removeItem('adminUser');
@@ -98,25 +60,18 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, []);
 
   const login = useCallback((email: string, password: string, rememberMe = false): boolean => {
-    const userEntry = MOCK_ADMIN_USERS[email.toLowerCase()];
-    
-    if (userEntry && userEntry.password === password && userEntry.user.isActive) {
-      const user: AdminUser = {
-        id: email.toLowerCase().replace(/[^a-z0-9]/g, ''),
-        ...userEntry.user,
-      };
-      
+    const user = userService.authenticate(email, password);
+
+    if (user) {
       setCurrentUser(user);
-      
+
       const storage = rememberMe ? localStorage : sessionStorage;
       storage.setItem('adminUser', JSON.stringify(user));
-      
-      // Also set the old auth for backward compatibility
       storage.setItem('adminAuth', JSON.stringify({ isAuthenticated: true, timestamp: Date.now() }));
-      
+
       return true;
     }
-    
+
     return false;
   }, []);
 
@@ -135,16 +90,20 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const canAccessPath = useCallback((path: string): boolean => {
     if (!currentUser) return false;
-    
+
     const permission = PATH_PERMISSIONS[path];
-    if (!permission) return true; // Unknown paths are accessible
+    if (!permission) return true;
     if (permission === 'always') return true;
-    
+
     return hasPermission(currentUser.role, permission);
   }, [currentUser]);
 
-  const updateCurrentUser = useCallback((user: AdminUser) => {
+  const updateCurrentUser = useCallback((user: ExtendedAdminUser) => {
+    // Persist to DB
+    userService.updateProfile(user.id, user);
+    // Update State
     setCurrentUser(user);
+    // Update Session
     const storage = localStorage.getItem('adminUser') ? localStorage : sessionStorage;
     storage.setItem('adminUser', JSON.stringify(user));
   }, []);

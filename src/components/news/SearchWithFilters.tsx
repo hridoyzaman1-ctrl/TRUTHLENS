@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, Filter, X, Calendar, User, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { articles, categories, authors } from '@/data/mockData';
+import { categories, authors } from '@/data/mockData';
+import { getArticles } from '@/lib/articleService';
+import { Article } from '@/types/news';
 import { ArticleCard } from './ArticleCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
@@ -19,9 +21,14 @@ export const SearchWithFilters = ({ onClose, isModal = false }: SearchWithFilter
   const [selectedAuthor, setSelectedAuthor] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{ from: string; to: string }>({ from: '', to: '' });
   const [showFilters, setShowFilters] = useState(false);
+  const [articlesList, setArticlesList] = useState<Article[]>([]);
+
+  useEffect(() => {
+    setArticlesList(getArticles());
+  }, []);
 
   const filteredArticles = useMemo(() => {
-    return articles.filter(article => {
+    return articlesList.filter(article => {
       // Search query filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -29,7 +36,7 @@ export const SearchWithFilters = ({ onClose, isModal = false }: SearchWithFilter
         const matchesExcerpt = article.excerpt.toLowerCase().includes(query);
         const matchesTags = article.tags.some(tag => tag.toLowerCase().includes(query));
         const matchesAuthor = article.author.name.toLowerCase().includes(query);
-        
+
         if (!matchesTitle && !matchesExcerpt && !matchesTags && !matchesAuthor) {
           return false;
         }

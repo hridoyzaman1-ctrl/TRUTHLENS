@@ -91,7 +91,7 @@ const AdminMedia = () => {
   };
 
   const toggleSelection = (id: string) => {
-    setSelectedItems(prev => 
+    setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
@@ -175,11 +175,10 @@ const AdminMedia = () => {
       {viewMode === 'grid' ? (
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {filteredMedia.map((item) => (
-            <div 
-              key={item.id} 
-              className={`group relative rounded-xl overflow-hidden bg-card border-2 transition-colors ${
-                selectedItems.includes(item.id) ? 'border-primary' : 'border-border'
-              }`}
+            <div
+              key={item.id}
+              className={`group relative rounded-xl overflow-hidden bg-card border-2 transition-colors ${selectedItems.includes(item.id) ? 'border-primary' : 'border-border'
+                }`}
             >
               <div className="aspect-video relative">
                 <img
@@ -187,28 +186,28 @@ const AdminMedia = () => {
                   alt={item.name}
                   className="h-full w-full object-cover"
                 />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors">
-                    {canDeleteAll && (
-                      <div className="absolute top-2 left-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.includes(item.id)}
-                          onChange={() => toggleSelection(item.id)}
-                          className="h-4 w-4 rounded"
-                        />
-                      </div>
-                    )}
-                    <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => copyUrl(item.url)}>
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                      {(canDeleteAll || canDeleteOwn) && (
-                        <Button size="icon" variant="destructive" className="h-8 w-8" onClick={() => handleDelete(item.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors">
+                  {canDeleteAll && (
+                    <div className="absolute top-2 left-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(item.id)}
+                        onChange={() => toggleSelection(item.id)}
+                        className="h-4 w-4 rounded"
+                      />
                     </div>
+                  )}
+                  <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => copyUrl(item.url)}>
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                    {(canDeleteAll || canDeleteOwn) && (
+                      <Button size="icon" variant="destructive" className="h-8 w-8" onClick={() => handleDelete(item.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
+                </div>
                 <Badge className="absolute top-2 right-2" variant="secondary">
                   {item.type === 'image' ? <Image className="h-3 w-3" /> : <Video className="h-3 w-3" />}
                 </Badge>
@@ -221,71 +220,131 @@ const AdminMedia = () => {
           ))}
         </div>
       ) : (
-        <div className="rounded-xl bg-card border border-border overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-muted">
-              <tr>
-                {canDeleteAll && (
-                  <th className="px-4 py-3 text-left w-12">
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.length === filteredMedia.length && filteredMedia.length > 0}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedItems(filteredMedia.map(i => i.id));
-                        } else {
-                          setSelectedItems([]);
-                        }
-                      }}
-                      className="h-4 w-4 rounded"
-                    />
-                  </th>
-                )}
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Preview</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Size</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filteredMedia.map((item) => (
-                <tr key={item.id} className="hover:bg-muted/50">
+        <>
+          <div className="hidden md:block rounded-xl bg-card border border-border overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-muted">
+                <tr>
                   {canDeleteAll && (
-                    <td className="px-4 py-3">
+                    <th className="px-4 py-3 text-left w-12">
                       <input
                         type="checkbox"
-                        checked={selectedItems.includes(item.id)}
-                        onChange={() => toggleSelection(item.id)}
+                        checked={selectedItems.length === filteredMedia.length && filteredMedia.length > 0}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedItems(filteredMedia.map(i => i.id));
+                          } else {
+                            setSelectedItems([]);
+                          }
+                        }}
                         className="h-4 w-4 rounded"
                       />
-                    </td>
+                    </th>
                   )}
-                  <td className="px-4 py-3">
-                    <img src={item.url} alt="" className="h-10 w-14 rounded object-cover" />
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium text-foreground">{item.name}</td>
-                  <td className="px-4 py-3">
-                    <Badge variant="outline" className="capitalize">{item.type}</Badge>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{item.size}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => copyUrl(item.url)}>
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                      {(canDeleteAll || canDeleteOwn) && (
-                        <Button size="icon" variant="ghost" className="text-destructive" onClick={() => handleDelete(item.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </td>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Preview</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Size</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredMedia.map((item) => (
+                  <tr key={item.id} className="hover:bg-muted/50">
+                    {canDeleteAll && (
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.includes(item.id)}
+                          onChange={() => toggleSelection(item.id)}
+                          className="h-4 w-4 rounded"
+                        />
+                      </td>
+                    )}
+                    <td className="px-4 py-3">
+                      <img src={item.url} alt="" className="h-10 w-14 rounded object-cover" />
+                    </td>
+                    <td className="px-4 py-3 text-sm font-medium text-foreground">{item.name}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant="outline" className="capitalize">{item.type}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{item.size}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => copyUrl(item.url)}>
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                        {(canDeleteAll || canDeleteOwn) && (
+                          <Button size="icon" variant="ghost" className="text-destructive" onClick={() => handleDelete(item.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile List View (Compact Row) */}
+          <div className="md:hidden space-y-2">
+            {canDeleteAll && filteredMedia.length > 0 && (
+              <div className="flex items-center gap-2 p-2 bg-muted rounded-lg mb-2">
+                <input
+                  type="checkbox"
+                  checked={selectedItems.length === filteredMedia.length && filteredMedia.length > 0}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedItems(filteredMedia.map(i => i.id));
+                    } else {
+                      setSelectedItems([]);
+                    }
+                  }}
+                  className="h-4 w-4 rounded"
+                />
+                <span className="text-xs font-medium">Select All</span>
+              </div>
+            )}
+
+            {filteredMedia.map((item) => (
+              <div key={item.id} className="bg-card p-3 rounded-lg border border-border flex items-center gap-3 shadow-sm">
+                {canDeleteAll && (
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.includes(item.id)}
+                    onChange={() => toggleSelection(item.id)}
+                    className="h-4 w-4 rounded flex-shrink-0"
+                  />
+                )}
+                <div className="h-12 w-16 bg-muted rounded overflow-hidden flex-shrink-0 relative">
+                  <img src={item.url} alt="" className="h-full w-full object-cover" />
+                  <div className="absolute inset-0 bg-black/10" />
+                  {item.type === 'video' && <div className="absolute inset-0 flex items-center justify-center"><Video className="h-4 w-4 text-white drop-shadow" /></div>}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm truncate">{item.name}</div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                    <span>{item.size}</span>
+                    <Badge variant="secondary" className="text-[10px] h-4 px-1">{item.type}</Badge>
+                  </div>
+                </div>
+
+                <div className="flex gap-1 flex-shrink-0">
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyUrl(item.url)}>
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                  {(canDeleteAll || canDeleteOwn) && (
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDelete(item.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {filteredMedia.length === 0 && (

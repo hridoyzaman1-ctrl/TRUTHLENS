@@ -34,6 +34,10 @@ import AdminMenu from "./pages/admin/AdminMenu";
 import AdminComments from "./pages/admin/AdminComments";
 import AdminContactInfo from "./pages/admin/AdminContactInfo";
 import AdminActivityLog from "./pages/admin/AdminActivityLog";
+import AdminProfile from "./pages/admin/AdminProfile";
+import AdminInternships from "./pages/admin/AdminInternships";
+import TeamPage from "./pages/TeamPage";
+import AdminTeam from "./pages/admin/AdminTeam";
 
 const queryClient = new QueryClient();
 
@@ -42,43 +46,47 @@ const App = () => (
     <ThemeProvider>
       <AdminAuthProvider>
         <ActivityLogProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <ScrollToTop />
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/category/:categoryId" element={<CategoryPage />} />
-              <Route path="/article/:slug" element={<ArticlePage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/careers" element={<CareersPage />} />
-              <Route path="/internship" element={<InternshipPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/search" element={<SearchPage />} />
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
-                <Route path="featured" element={<AdminFeatured />} />
-                <Route path="sections" element={<AdminSections />} />
-                <Route path="menu" element={<AdminMenu />} />
-                <Route path="editorial" element={<AdminEditorial />} />
-                <Route path="articles" element={<AdminArticles />} />
-                <Route path="comments" element={<AdminComments />} />
-                <Route path="contact-info" element={<AdminContactInfo />} />
-                <Route path="categories" element={<AdminCategories />} />
-                <Route path="media" element={<AdminMedia />} />
-                <Route path="users" element={<AdminUsers />} />
-                <Route path="jobs" element={<AdminJobs />} />
-                <Route path="settings" element={<AdminSettings />} />
-                <Route path="activity" element={<AdminActivityLog />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <ScrollToTop />
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/category/:categoryId" element={<CategoryPage />} />
+                <Route path="/article/:slug" element={<ArticlePage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/careers" element={<CareersPage />} />
+                <Route path="/internship" element={<InternshipPage />} />
+                <Route path="/team" element={<TeamPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/search" element={<SearchPage />} />
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="featured" element={<AdminFeatured />} />
+                  <Route path="sections" element={<AdminSections />} />
+                  <Route path="menu" element={<AdminMenu />} />
+                  <Route path="editorial" element={<AdminEditorial />} />
+                  <Route path="articles" element={<AdminArticles />} />
+                  <Route path="comments" element={<AdminComments />} />
+                  <Route path="contact-info" element={<AdminContactInfo />} />
+                  <Route path="categories" element={<AdminCategories />} />
+                  <Route path="media" element={<AdminMedia />} />
+                  <Route path="users" element={<AdminUsers />} />
+                  <Route path="team" element={<AdminTeam />} />
+                  <Route path="jobs" element={<AdminJobs />} />
+                  <Route path="internships" element={<AdminInternships />} />
+                  <Route path="settings" element={<AdminSettings />} />
+                  <Route path="profile" element={<AdminProfile />} />
+                  <Route path="activity" element={<AdminActivityLog />} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
         </ActivityLogProvider>
       </AdminAuthProvider>
     </ThemeProvider>

@@ -1,8 +1,22 @@
-import { articles } from '@/data/mockData';
+import { useState, useEffect } from 'react';
+import { getArticles } from '@/lib/articleService';
+import { Article } from '@/types/news';
 import { ArticleCard } from './ArticleCard';
 
 export const LatestNews = () => {
-  const latestArticles = [...articles]
+  const [articlesList, setArticlesList] = useState<Article[]>([]);
+
+  const fetchArticles = () => {
+    setArticlesList(getArticles());
+  };
+
+  useEffect(() => {
+    fetchArticles();
+    window.addEventListener('articlesUpdated', fetchArticles);
+    return () => window.removeEventListener('articlesUpdated', fetchArticles);
+  }, []);
+
+  const latestArticles = [...articlesList]
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
     .slice(0, 6);
 
@@ -12,7 +26,7 @@ export const LatestNews = () => {
         <h2 className="mb-6 font-display text-xl font-bold text-foreground md:text-2xl border-b-2 border-primary pb-2">
           Latest News
         </h2>
-        
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {latestArticles.map((article) => (
             <ArticleCard key={article.id} article={article} />

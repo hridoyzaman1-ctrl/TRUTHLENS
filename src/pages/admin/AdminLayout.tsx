@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, FileText, FolderOpen, Image, Users, Briefcase, Settings, 
+import {
+  LayoutDashboard, FileText, FolderOpen, Image, Users, Briefcase, Settings,
   Menu, X, LogOut, Star, Pen, LayoutGrid, Navigation, MessageSquare, Building,
-  Shield, ChevronDown, Activity
+  Shield, ChevronDown, Activity, GraduationCap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,7 +41,9 @@ const allNavItems: NavItem[] = [
   { icon: FolderOpen, label: 'Categories', path: '/admin/categories', requiredPermission: 'manageCategories' },
   { icon: Image, label: 'Media', path: '/admin/media', requiredPermission: 'uploadMedia' },
   { icon: Users, label: 'Users', path: '/admin/users', requiredPermission: 'manageUsers' },
+  { icon: Users, label: 'Team', path: '/admin/team', requiredPermission: 'manageUsers' },
   { icon: Briefcase, label: 'Jobs', path: '/admin/jobs', requiredPermission: 'manageJobs' },
+  { icon: GraduationCap, label: 'Internships', path: '/admin/internships', requiredPermission: 'manageJobs' },
   { icon: Activity, label: 'Activity Log', path: '/admin/activity', requiredPermission: 'manageSettings' },
   { icon: Settings, label: 'Settings', path: '/admin/settings', requiredPermission: 'manageSettings' },
 ];
@@ -64,7 +66,7 @@ const AdminLayout = () => {
       navigate('/admin/login', { state: { from: location.pathname }, replace: true });
       return;
     }
-    
+
     // Check if user can access current path
     if (currentUser && !canAccessPath(location.pathname)) {
       toast.error('You do not have permission to access this page');
@@ -96,8 +98,8 @@ const AdminLayout = () => {
     <div className="flex min-h-screen bg-background">
       {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden" 
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -162,7 +164,7 @@ const AdminLayout = () => {
             {navItems.find(item => item.path === location.pathname)?.label || 'Admin'}
           </h1>
           <div className="flex-1" />
-          
+
           {/* Desktop User Menu */}
           <div className="hidden lg:flex items-center gap-3">
             <DropdownMenu>
@@ -189,6 +191,11 @@ const AdminLayout = () => {
                 <DropdownMenuItem asChild>
                   <Link to="/" className="cursor-pointer">
                     View Site
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/admin/profile" className="cursor-pointer">
+                    Profile
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

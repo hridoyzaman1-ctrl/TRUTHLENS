@@ -1,21 +1,27 @@
 import { useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { articles, categories } from '@/data/mockData';
+import { categories } from '@/data/mockData';
+import { getArticles } from '@/lib/articleService';
+import { Article, Category } from '@/types/news';
 import { ArticleCard } from '@/components/news/ArticleCard';
 import { ArticleCardSkeleton } from '@/components/ui/skeletons';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { usePagination } from '@/hooks/usePagination';
-import { Category } from '@/types/news';
 
 const ITEMS_PER_PAGE = 9;
 
 const CategoryPage = () => {
   const { categoryId } = useParams<{ categoryId: string }>();
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  
+  const [articlesList, setArticlesList] = useState<Article[]>([]);
+
   const category = categories.find(c => c.id === categoryId);
-  const categoryArticles = articles.filter(a => a.category === categoryId as Category);
+  const categoryArticles = articlesList.filter(a => a.category === categoryId as Category);
+
+  useEffect(() => {
+    setArticlesList(getArticles());
+  }, []);
 
   const {
     currentItems,
@@ -82,7 +88,7 @@ const CategoryPage = () => {
                 <ArticleCard key={article.id} article={article} />
               ))}
             </div>
-            
+
             <PaginationControls
               currentPage={currentPage}
               totalPages={totalPages}

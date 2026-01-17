@@ -1,16 +1,31 @@
+import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
-import { articles } from '@/data/mockData';
+import { getArticleBySlug, getArticles, incrementArticleViews } from '@/lib/articleService';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Eye, Share2, Facebook, Twitter, Linkedin, Mail, Link2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ArticleCard } from '@/components/news/ArticleCard';
 import { CommentSection } from '@/components/news/CommentSection';
+import { getYoutubeId } from '@/lib/videoUtils';
+import { FloatingVideoPlayer } from '@/components/news/FloatingVideoPlayer';
+
 const ArticlePage = () => {
   const { slug } = useParams<{ slug: string }>();
-  const article = articles.find(a => a.slug === slug);
-  const relatedArticles = articles.filter(a => a.category === article?.category && a.id !== article?.id).slice(0, 3);
+  const article = slug ? getArticleBySlug(slug) : undefined;
+
+  useEffect(() => {
+    if (article?.id) {
+      incrementArticleViews(article.id);
+    }
+  }, [article?.id]);
+
+  // getArticles() returns the full list from storage/mock
+  const allArticles = getArticles();
+  const relatedArticles = allArticles
+    .filter(a => a.category === article?.category && a.id !== article?.id)
+    .slice(0, 3);
 
   if (!article) {
     return (
@@ -25,16 +40,45 @@ const ArticlePage = () => {
     );
   }
 
-  const isVideoHero = Boolean(article.hasVideo && article.videoUrl);
-  const articleContainerClass = `container mx-auto px-4 ${isVideoHero ? 'mt-6 md:mt-8' : '-mt-20'} relative z-10`;
+  const heroVideoRef = useRef<HTMLDivElement>(null);
+  const [showFloatingPlayer, setShowFloatingPlayer] = useState(false);
+
+  // Scroll observer to trigger floating player
+  useEffect(() => {
+    if (!article?.videoUrl) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Show floating player when hero video is OUT of view (entry.isIntersecting is false)
+        // and we have scrolled PAST it (entry.boundingClientRect.top < 0)
+        setShowFloatingPlayer(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+      },
+      { threshold: 0.2 } // Trigger when 80% is out of view
+    );
+
+    if (heroVideoRef.current) {
+      observer.observe(heroVideoRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [article?.videoUrl]);
+
+  // Relaxed logic for "is video article"
+  const isVideoArticle = Boolean(article && (article.hasVideo || article.videoUrl) && article.videoUrl);
+  const articleContainerClass = `container mx-auto px-4 ${isVideoArticle ? 'mt-6 md:mt-8' : '-mt-20'} relative z-10`;
+
+  const youtubeId = isVideoArticle ? getYoutubeId(article.videoUrl!) : null;
 
   return (
     <Layout>
       {/* Hero Image or Video */}
-      <div className="relative h-64 md:h-96 lg:h-[500px] bg-black overflow-hidden">
-        {isVideoHero ? (
+      <div
+        ref={heroVideoRef}
+        className="relative h-64 md:h-96 lg:h-[500px] bg-black overflow-hidden"
+      >
+        {isVideoArticle && youtubeId ? (
           <iframe
-            src={article.videoUrl}
+            src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=0`}
             title={article.title}
             className="absolute inset-0 h-full w-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -51,6 +95,14 @@ const ArticlePage = () => {
           </>
         )}
       </div>
+
+      {isVideoArticle && article.videoUrl && (
+        <FloatingVideoPlayer
+          videoUrl={article.videoUrl}
+          title={article.title}
+          isVisible={showFloatingPlayer}
+        />
+      )}
 
       <article className={articleContainerClass}>
         <div className="max-w-4xl mx-auto">
@@ -101,16 +153,11 @@ const ArticlePage = () => {
 
           {/* Article Content */}
           <div className="mt-8 prose prose-lg max-w-none dark:prose-invert">
-            <p>{article.content}</p>
-            <p>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-            </p>
-            <p>
-              Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-            </p>
-            <p>
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
-            </p>
+            {article.content.split('\n\n').map((paragraph, index) => (
+              <p key={index} className="mb-4 text-justify leading-relaxed">
+                {paragraph}
+              </p>
+            ))}
           </div>
 
           {/* Tags */}
@@ -126,8 +173,8 @@ const ArticlePage = () => {
           <div className="mt-8 border-t border-border pt-6">
             <h3 className="text-sm font-semibold text-foreground mb-4">Share this article</h3>
             <div className="flex flex-wrap items-center gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 className="gap-2 hover:bg-[#1877F2] hover:text-white hover:border-[#1877F2] transition-colors"
                 onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(article.title)}`, '_blank', 'width=600,height=400')}
@@ -135,8 +182,8 @@ const ArticlePage = () => {
                 <Facebook className="h-4 w-4" />
                 <span className="hidden sm:inline">Facebook</span>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 className="gap-2 hover:bg-[#1DA1F2] hover:text-white hover:border-[#1DA1F2] transition-colors"
                 onClick={() => window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(article.title)}`, '_blank', 'width=600,height=400')}
@@ -144,8 +191,8 @@ const ArticlePage = () => {
                 <Twitter className="h-4 w-4" />
                 <span className="hidden sm:inline">Twitter</span>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 className="gap-2 hover:bg-[#0A66C2] hover:text-white hover:border-[#0A66C2] transition-colors"
                 onClick={() => window.open(`https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(window.location.href)}&title=${encodeURIComponent(article.title)}&summary=${encodeURIComponent(article.excerpt)}`, '_blank', 'width=600,height=400')}
@@ -153,8 +200,8 @@ const ArticlePage = () => {
                 <Linkedin className="h-4 w-4" />
                 <span className="hidden sm:inline">LinkedIn</span>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 className="gap-2 hover:bg-[#25D366] hover:text-white hover:border-[#25D366] transition-colors"
                 onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(article.title + ' ' + window.location.href)}`, '_blank')}
@@ -162,8 +209,8 @@ const ArticlePage = () => {
                 <MessageCircle className="h-4 w-4" />
                 <span className="hidden sm:inline">WhatsApp</span>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 className="gap-2 hover:bg-muted transition-colors"
                 onClick={() => window.open(`mailto:?subject=${encodeURIComponent(article.title)}&body=${encodeURIComponent('Check out this article: ' + window.location.href)}`, '_self')}
@@ -171,8 +218,8 @@ const ArticlePage = () => {
                 <Mail className="h-4 w-4" />
                 <span className="hidden sm:inline">Email</span>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 className="gap-2 hover:bg-primary hover:text-primary-foreground transition-colors"
                 onClick={() => {

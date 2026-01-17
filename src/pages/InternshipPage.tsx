@@ -6,12 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { 
-  GraduationCap, 
-  Users, 
-  Award, 
-  Briefcase, 
-  Globe, 
+import {
+  GraduationCap,
+  Users,
+  Award,
+  Briefcase,
+  Globe,
   Heart,
   CheckCircle,
   BookOpen,
@@ -27,16 +27,17 @@ import {
   Lightbulb
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { 
-  defaultBenefits, 
-  defaultDepartments, 
-  defaultFAQs, 
+import {
+  defaultBenefits,
+  defaultDepartments,
+  defaultFAQs,
   defaultPageContent,
   type InternshipBenefit,
   type InternshipDepartment,
   type InternshipFAQ,
   type InternshipPageContent
 } from '@/data/internshipData';
+import { saveApplication } from '@/lib/internshipService';
 
 // Icon component mapper
 const IconComponent = ({ iconName, className }: { iconName: string; className?: string }) => {
@@ -56,7 +57,7 @@ const IconComponent = ({ iconName, className }: { iconName: string; className?: 
     Target,
     Lightbulb
   };
-  
+
   const Icon = icons[iconName] || BookOpen;
   return <Icon className={className} />;
 };
@@ -98,14 +99,14 @@ const InternshipPage = () => {
         toast.error('File size must be less than 10MB');
         return;
       }
-      
+
       // Validate file type
       const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'];
       if (!validTypes.includes(file.type)) {
         toast.error('Please upload a PDF, DOC, DOCX, JPG, or PNG file');
         return;
       }
-      
+
       setCvFile(file);
       toast.success(`File "${file.name}" selected`);
     }
@@ -121,30 +122,44 @@ const InternshipPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // When connected to Cloud, this will:
-    // 1. Upload the CV file to storage
-    // 2. Save the application to the database
-    // 3. Send confirmation email if auto-reply is enabled
-    
-    // Simulate submission
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    toast.success('Application submitted successfully! We will contact you soon.');
-    setFormData({
-      fullName: '',
-      email: '',
-      phone: '',
-      university: '',
-      department: '',
-      portfolio: '',
-      coverLetter: ''
-    });
-    setCvFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    try {
+      saveApplication({
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        university: formData.university,
+        department: formData.department,
+        portfolio: formData.portfolio,
+        coverLetter: formData.coverLetter,
+        cvFileName: cvFile ? cvFile.name : 'unknown.pdf'
+      });
+
+      toast.success('Application submitted successfully! We will contact you soon.');
+
+      // Reset form
+      setFormData({
+        fullName: '',
+        email: '',
+        phone: '',
+        university: '',
+        department: '',
+        portfolio: '',
+        coverLetter: ''
+      });
+      setCvFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (error) {
+      toast.error('Failed to submit application. Please try again.');
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   return (
@@ -181,7 +196,7 @@ const InternshipPage = () => {
           <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
             {pageContent.whyJoinDescription}
           </p>
-          
+
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {benefits.sort((a, b) => a.order - b.order).map((benefit) => (
               <Card key={benefit.id} className="bg-card border-border hover:shadow-lg transition-shadow">
@@ -206,7 +221,7 @@ const InternshipPage = () => {
           <h2 className="text-center font-display text-2xl font-bold text-foreground md:text-3xl mb-12">
             {pageContent.departmentsTitle}
           </h2>
-          
+
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {departments.sort((a, b) => a.order - b.order).map((dept) => (
               <div key={dept.id} className="text-center p-6 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
@@ -231,7 +246,7 @@ const InternshipPage = () => {
             <p className="text-center text-muted-foreground mb-8">
               {pageContent.formDescription}
             </p>
-            
+
             <Card className="bg-card border-border">
               <CardContent className="p-6 md:p-8">
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -312,9 +327,9 @@ const InternshipPage = () => {
                     <p className="text-xs text-muted-foreground mb-2">
                       Accepted formats: PDF, DOC, DOCX, JPG, PNG (Max 10MB)
                     </p>
-                    
+
                     {!cvFile ? (
-                      <div 
+                      <div
                         className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors"
                         onClick={() => fileInputRef.current?.click()}
                       >
@@ -380,16 +395,16 @@ const InternshipPage = () => {
                     />
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
+                  <Button
+                    type="submit"
+                    className="w-full"
                     size="lg"
                     disabled={isSubmitting || !cvFile}
                   >
                     {isSubmitting ? 'Submitting...' : 'Submit Application'}
                     <CheckCircle className="ml-2 h-5 w-5" />
                   </Button>
-                  
+
                   {!cvFile && (
                     <p className="text-xs text-center text-muted-foreground">
                       Please upload your CV/Resume to submit the application
@@ -408,7 +423,7 @@ const InternshipPage = () => {
           <h2 className="text-center font-display text-2xl font-bold text-foreground md:text-3xl mb-12">
             {pageContent.faqTitle}
           </h2>
-          
+
           <div className="max-w-3xl mx-auto space-y-4">
             {faqs.sort((a, b) => a.order - b.order).map((faq) => (
               <div key={faq.id} className="rounded-xl bg-card border border-border p-6">

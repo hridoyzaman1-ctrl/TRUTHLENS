@@ -1,18 +1,19 @@
-import { useState } from 'react';
-import { 
-  MessageSquare, 
-  Trash2, 
-  Search, 
-  Eye, 
-  Flag, 
-  CheckCircle, 
+import { useState, useEffect, useCallback } from 'react';
+import {
+  MessageSquare,
+  Trash2,
+  Search,
+  Eye,
+  Flag,
+  CheckCircle,
   XCircle,
   User,
   Calendar,
   ThumbsUp,
   ExternalLink,
   Filter,
-  Lock
+  Lock,
+  RefreshCw
 } from 'lucide-react';
 import { useAdminAuth } from '@/context/AdminAuthContext';
 import { useActivityLog } from '@/context/ActivityLogContext';
@@ -55,7 +56,7 @@ import {
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { articles } from '@/data/mockData';
+import { getAllComments, updateCommentStatus, deleteComment as deleteCommentService } from '@/lib/commentService';
 
 interface Comment {
   id: string;
@@ -72,123 +73,25 @@ interface Comment {
   isReply: boolean;
 }
 
-// Mock comments data for admin
-const initialComments: Comment[] = [
-  {
-    id: '1',
-    author: 'John Doe',
-    email: 'john.doe@email.com',
-    content: 'This is a really insightful article. The research is thorough and well-presented.',
-    articleId: '1',
-    articleTitle: 'Breaking: Global Climate Summit Reaches Historic Agreement on Carbon Emissions',
-    articleSlug: 'global-climate-summit-historic-agreement',
-    createdAt: new Date('2026-01-13T10:00:00'),
-    likes: 12,
-    status: 'approved',
-    isReply: false
-  },
-  {
-    id: '1-1',
-    author: 'Jane Smith',
-    email: 'jane.smith@email.com',
-    content: 'I agree! The author did a great job covering all the key points.',
-    articleId: '1',
-    articleTitle: 'Breaking: Global Climate Summit Reaches Historic Agreement on Carbon Emissions',
-    articleSlug: 'global-climate-summit-historic-agreement',
-    createdAt: new Date('2026-01-13T12:00:00'),
-    likes: 5,
-    status: 'approved',
-    parentId: '1',
-    isReply: true
-  },
-  {
-    id: '2',
-    author: 'Sarah Wilson',
-    email: 'sarah.wilson@email.com',
-    content: 'Great coverage of an important topic. Would love to see more follow-up stories on this.',
-    articleId: '1',
-    articleTitle: 'Breaking: Global Climate Summit Reaches Historic Agreement on Carbon Emissions',
-    articleSlug: 'global-climate-summit-historic-agreement',
-    createdAt: new Date('2026-01-12T15:00:00'),
-    likes: 8,
-    status: 'approved',
-    isReply: false
-  },
-  {
-    id: '3',
-    author: 'Anonymous User',
-    email: 'anon@temp.com',
-    content: 'This article contains misleading information and should be reviewed.',
-    articleId: '2',
-    articleTitle: 'Economic Outlook: Central Banks Signal New Monetary Policy Direction',
-    articleSlug: 'economic-outlook-central-banks-policy',
-    createdAt: new Date('2026-01-14T08:00:00'),
-    likes: 0,
-    status: 'flagged',
-    isReply: false
-  },
-  {
-    id: '4',
-    author: 'SpamBot123',
-    email: 'spam@fake.com',
-    content: 'Buy cheap products at www.spam-link.com! Best deals online!!!',
-    articleId: '3',
-    articleTitle: 'The Untold Story: Inside the Lives of Migrant Workers',
-    articleSlug: 'untold-story-migrant-workers',
-    createdAt: new Date('2026-01-14T09:00:00'),
-    likes: 0,
-    status: 'spam',
-    isReply: false
-  },
-  {
-    id: '5',
-    author: 'Michael Brown',
-    email: 'michael.b@email.com',
-    content: 'Waiting for moderation. This is a pending comment that needs review.',
-    articleId: '4',
-    articleTitle: 'Tech Giants Face New Regulations: What It Means for Digital Privacy',
-    articleSlug: 'tech-giants-new-regulations-privacy',
-    createdAt: new Date('2026-01-14T10:30:00'),
-    likes: 0,
-    status: 'pending',
-    isReply: false
-  },
-  {
-    id: '6',
-    author: 'Emily Chen',
-    email: 'emily.chen@email.com',
-    content: 'Fascinating perspective on the regulatory landscape. The implications for consumer privacy are significant.',
-    articleId: '4',
-    articleTitle: 'Tech Giants Face New Regulations: What It Means for Digital Privacy',
-    articleSlug: 'tech-giants-new-regulations-privacy',
-    createdAt: new Date('2026-01-13T16:45:00'),
-    likes: 15,
-    status: 'approved',
-    isReply: false
-  },
-  {
-    id: '7',
-    author: 'David Lee',
-    email: 'david.lee@email.com',
-    content: 'Sports coverage at its finest! Great analysis of the match.',
-    articleId: '8',
-    articleTitle: 'World Cup Final: Historic Victory Celebrated Across Nations',
-    articleSlug: 'world-cup-final-historic-victory',
-    createdAt: new Date('2026-01-12T20:00:00'),
-    likes: 22,
-    status: 'approved',
-    isReply: false
-  }
-];
-
 const AdminComments = () => {
   const { hasPermission } = useAdminAuth();
   const { logActivity } = useActivityLog();
-  const [comments, setComments] = useState<Comment[]>(initialComments);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+
+  const loadComments = useCallback(() => {
+    const allComments = getAllComments() as Comment[];
+    setComments(allComments);
+  }, []);
+
+  useEffect(() => {
+    loadComments();
+    window.addEventListener('commentsUpdated', loadComments);
+    return () => window.removeEventListener('commentsUpdated', loadComments);
+  }, [loadComments]);
 
   const canViewComments = hasPermission('viewAllComments');
   const canModerateComments = hasPermission('moderateComments');
@@ -222,73 +125,80 @@ const AdminComments = () => {
   };
 
   const filteredComments = comments.filter(comment => {
-    const matchesSearch = 
+    const matchesSearch =
       comment.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
       comment.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
       comment.articleTitle.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesStatus = statusFilter === 'all' || comment.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
   const handleDelete = (commentId: string) => {
     const comment = comments.find(c => c.id === commentId);
-    setComments(comments.filter(c => c.id !== commentId));
-    logActivity('delete', 'comment', {
-      resourceId: commentId,
-      resourceName: comment?.author,
-      details: `Deleted comment on "${comment?.articleTitle}"`
-    });
-    toast.success('Comment deleted successfully');
+    if (comment) {
+      deleteCommentService(comment.articleId, commentId);
+      loadComments();
+      logActivity('delete', 'comment', {
+        resourceId: commentId,
+        resourceName: comment?.author,
+        details: `Deleted comment on "${comment?.articleTitle}"`
+      });
+      toast.success('Comment deleted successfully');
+    }
   };
 
   const handleBulkDelete = (status: string) => {
-    const count = comments.filter(c => c.status === status).length;
-    setComments(comments.filter(c => c.status !== status));
+    const toDelete = comments.filter(c => c.status === status);
+    toDelete.forEach(c => deleteCommentService(c.articleId, c.id));
+    loadComments();
     logActivity('bulk_delete', 'comment', {
-      details: `Bulk deleted ${count} ${status} comments`
+      details: `Bulk deleted ${toDelete.length} ${status} comments`
     });
-    toast.success(`${count} ${status} comments deleted`);
+    toast.success(`${toDelete.length} ${status} comments deleted`);
   };
 
   const handleApprove = (commentId: string) => {
     const comment = comments.find(c => c.id === commentId);
-    setComments(comments.map(c => 
-      c.id === commentId ? { ...c, status: 'approved' as const } : c
-    ));
-    logActivity('approve', 'comment', {
-      resourceId: commentId,
-      resourceName: comment?.author,
-      details: `Approved comment on "${comment?.articleTitle}"`
-    });
-    toast.success('Comment approved');
+    if (comment) {
+      updateCommentStatus(comment.articleId, commentId, 'approved');
+      loadComments();
+      logActivity('approve', 'comment', {
+        resourceId: commentId,
+        resourceName: comment?.author,
+        details: `Approved comment on "${comment?.articleTitle}"`
+      });
+      toast.success('Comment approved');
+    }
   };
 
   const handleFlag = (commentId: string) => {
     const comment = comments.find(c => c.id === commentId);
-    setComments(comments.map(c => 
-      c.id === commentId ? { ...c, status: 'flagged' as const } : c
-    ));
-    logActivity('flag', 'comment', {
-      resourceId: commentId,
-      resourceName: comment?.author,
-      details: `Flagged comment for review`
-    });
-    toast.success('Comment flagged for review');
+    if (comment) {
+      updateCommentStatus(comment.articleId, commentId, 'flagged');
+      loadComments();
+      logActivity('flag', 'comment', {
+        resourceId: commentId,
+        resourceName: comment?.author,
+        details: `Flagged comment for review`
+      });
+      toast.success('Comment flagged for review');
+    }
   };
 
   const handleMarkSpam = (commentId: string) => {
     const comment = comments.find(c => c.id === commentId);
-    setComments(comments.map(c => 
-      c.id === commentId ? { ...c, status: 'spam' as const } : c
-    ));
-    logActivity('flag', 'comment', {
-      resourceId: commentId,
-      resourceName: comment?.author,
-      details: `Marked comment as spam`
-    });
-    toast.success('Comment marked as spam');
+    if (comment) {
+      updateCommentStatus(comment.articleId, commentId, 'spam');
+      loadComments();
+      logActivity('flag', 'comment', {
+        resourceId: commentId,
+        resourceName: comment?.author,
+        details: `Marked comment as spam`
+      });
+      toast.success('Comment marked as spam');
+    }
   };
 
   const viewComment = (comment: Comment) => {
@@ -361,7 +271,7 @@ const AdminComments = () => {
             <SelectItem value="spam">Spam</SelectItem>
           </SelectContent>
         </Select>
-        
+
         {/* Bulk Actions */}
         {stats.spam > 0 && (
           <AlertDialog>
@@ -390,7 +300,8 @@ const AdminComments = () => {
       </div>
 
       {/* Comments Table */}
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-card rounded-xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -439,7 +350,7 @@ const AdminComments = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Link 
+                      <Link
                         to={`/article/${comment.articleSlug}`}
                         className="text-sm text-primary hover:underline line-clamp-2"
                         target="_blank"
@@ -466,7 +377,7 @@ const AdminComments = () => {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        
+
                         {canModerateComments && comment.status !== 'approved' && (
                           <Button
                             variant="ghost"
@@ -477,7 +388,7 @@ const AdminComments = () => {
                             <CheckCircle className="h-4 w-4" />
                           </Button>
                         )}
-                        
+
                         {canModerateComments && comment.status !== 'flagged' && comment.status !== 'spam' && (
                           <Button
                             variant="ghost"
@@ -488,7 +399,7 @@ const AdminComments = () => {
                             <Flag className="h-4 w-4" />
                           </Button>
                         )}
-                        
+
                         {canModerateComments && comment.status !== 'spam' && (
                           <Button
                             variant="ghost"
@@ -520,7 +431,7 @@ const AdminComments = () => {
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction 
+                                <AlertDialogAction
                                   onClick={() => handleDelete(comment.id)}
                                   className="bg-destructive text-destructive-foreground"
                                 >
@@ -540,6 +451,92 @@ const AdminComments = () => {
         </div>
       </div>
 
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {filteredComments.length === 0 ? (
+          <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
+            No comments found
+          </div>
+        ) : (
+          filteredComments.map((comment) => (
+            <div key={comment.id} className="bg-card rounded-xl border border-border p-4 space-y-3 shadow-sm">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm text-foreground">{comment.author}</div>
+                    <div className="text-xs text-muted-foreground">{formatDistanceToNow(comment.createdAt, { addSuffix: true })}</div>
+                  </div>
+                </div>
+                {getStatusBadge(comment.status)}
+              </div>
+
+              <div className="space-y-2">
+                {comment.isReply && <Badge variant="outline" className="text-[10px]">Reply</Badge>}
+                <p className="text-sm text-foreground">{comment.content}</p>
+              </div>
+
+              <div className="bg-muted/30 p-2 rounded text-xs border border-border/50">
+                <span className="text-muted-foreground">On: </span>
+                <Link to={`/article/${comment.articleSlug}`} className="font-medium text-primary hover:underline">
+                  {comment.articleTitle}
+                </Link>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-border mt-2">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <ThumbsUp className="h-3 w-3" /> {comment.likes}
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => viewComment(comment)}>
+                    <Eye className="h-4 w-4" />
+                  </Button>
+
+                  {canModerateComments && comment.status !== 'approved' && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={() => handleApprove(comment.id)}>
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
+                  )}
+
+                  {canModerateComments && comment.status !== 'flagged' && comment.status !== 'spam' && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-orange-600" onClick={() => handleFlag(comment.id)}>
+                      <Flag className="h-4 w-4" />
+                    </Button>
+                  )}
+
+                  {canModerateComments && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="bg-background">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete comment?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete this comment by {comment.author}.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(comment.id)} className="bg-destructive text-destructive-foreground">
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
       {/* View Comment Dialog */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
         <DialogContent className="bg-background max-w-2xl">
@@ -547,7 +544,7 @@ const AdminComments = () => {
             <DialogTitle>Comment Details</DialogTitle>
             <DialogDescription>Full comment information and moderation options</DialogDescription>
           </DialogHeader>
-          
+
           {selectedComment && (
             <div className="space-y-4">
               <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-lg">
@@ -585,7 +582,7 @@ const AdminComments = () => {
 
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-2">Article</h4>
-                <Link 
+                <Link
                   to={`/article/${selectedComment.articleSlug}`}
                   target="_blank"
                   className="flex items-center gap-2 text-primary hover:underline"
@@ -597,8 +594,8 @@ const AdminComments = () => {
 
               <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
                 {selectedComment.status !== 'approved' && (
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     className="gap-2 bg-green-600 hover:bg-green-700"
                     onClick={() => {
                       handleApprove(selectedComment.id);
@@ -610,8 +607,8 @@ const AdminComments = () => {
                   </Button>
                 )}
                 {selectedComment.status !== 'flagged' && (
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="outline"
                     className="gap-2 text-orange-600 border-orange-600 hover:bg-orange-50"
                     onClick={() => {
@@ -624,8 +621,8 @@ const AdminComments = () => {
                   </Button>
                 )}
                 {selectedComment.status !== 'spam' && (
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="outline"
                     className="gap-2 text-red-600 border-red-600 hover:bg-red-50"
                     onClick={() => {
@@ -653,7 +650,7 @@ const AdminComments = () => {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
+                      <AlertDialogAction
                         onClick={() => {
                           handleDelete(selectedComment.id);
                           setViewDialogOpen(false);

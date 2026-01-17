@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Save, Pen, MessageCircle, GraduationCap, Eye, Edit, Trash2, Plus, FileText, Download, Lock } from 'lucide-react';
 import { useAdminAuth } from '@/context/AdminAuthContext';
 import { Button } from '@/components/ui/button';
@@ -11,11 +11,12 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { articles } from '@/data/mockData';
-import { 
-  defaultBenefits, 
-  defaultDepartments, 
-  defaultFAQs, 
+import { getArticles } from '@/lib/articleService';
+import { Article } from '@/types/news';
+import {
+  defaultBenefits,
+  defaultDepartments,
+  defaultFAQs,
   defaultPageContent,
   mockApplications,
   iconMap,
@@ -53,6 +54,16 @@ const AdminEditorial = () => {
   const [applications, setApplications] = useState<InternshipApplication[]>(mockApplications);
   const [selectedApplication, setSelectedApplication] = useState<InternshipApplication | null>(null);
 
+  // Load articles for selection
+  const [articlesList, setArticlesList] = useState<Article[]>([]);
+  useEffect(() => {
+    const loadArticles = () => setArticlesList(getArticles());
+    loadArticles();
+
+    window.addEventListener('articlesUpdated', loadArticles);
+    return () => window.removeEventListener('articlesUpdated', loadArticles);
+  }, []);
+
   const canManageEditorial = hasPermission('manageEditorial');
 
   // If user doesn't have permission, show restricted view
@@ -67,13 +78,13 @@ const AdminEditorial = () => {
       </div>
     );
   }
-  
+
   // Internship content management
   const [benefits, setBenefits] = useState<InternshipBenefit[]>(defaultBenefits);
   const [departments, setDepartments] = useState<InternshipDepartment[]>(defaultDepartments);
   const [faqs, setFaqs] = useState<InternshipFAQ[]>(defaultFAQs);
   const [pageContent, setPageContent] = useState<InternshipPageContent>(defaultPageContent);
-  
+
   // Dialog states
   const [editingBenefit, setEditingBenefit] = useState<InternshipBenefit | null>(null);
   const [editingDepartment, setEditingDepartment] = useState<InternshipDepartment | null>(null);
@@ -82,7 +93,8 @@ const AdminEditorial = () => {
   const [isDepartmentDialogOpen, setIsDepartmentDialogOpen] = useState(false);
   const [isFaqDialogOpen, setIsFaqDialogOpen] = useState(false);
 
-  const editorialArticles = articles.filter(a => a.category === 'editorial');
+  // Allow all non-rejected articles to be selected for editorial section
+  const editorialArticles = articlesList.filter(a => (a.status as string) !== 'rejected');
 
   const getStatusBadge = (status: string) => {
     const colors = {
@@ -108,7 +120,7 @@ const AdminEditorial = () => {
   };
 
   const updateApplicationStatus = (id: string, status: string) => {
-    setApplications(applications.map(app => 
+    setApplications(applications.map(app =>
       app.id === id ? { ...app, status: status as InternshipApplication['status'] } : app
     ));
     toast.success(`Application status updated to ${status}`);
@@ -228,7 +240,7 @@ const AdminEditorial = () => {
                 </div>
                 <Switch
                   checked={editorialSettings.showEditorialSection}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setEditorialSettings({ ...editorialSettings, showEditorialSection: checked })
                   }
                 />
@@ -239,7 +251,7 @@ const AdminEditorial = () => {
                 <Input
                   type="number"
                   value={editorialSettings.maxEditorials}
-                  onChange={(e) => 
+                  onChange={(e) =>
                     setEditorialSettings({ ...editorialSettings, maxEditorials: parseInt(e.target.value) || 4 })
                   }
                   min={1}
@@ -307,7 +319,7 @@ const AdminEditorial = () => {
                 </div>
                 <Switch
                   checked={editorialSettings.showCommentsSection}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setEditorialSettings({ ...editorialSettings, showCommentsSection: checked })
                   }
                 />
@@ -320,7 +332,7 @@ const AdminEditorial = () => {
                 </div>
                 <Switch
                   checked={editorialSettings.moderateComments}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     setEditorialSettings({ ...editorialSettings, moderateComments: checked })
                   }
                 />
@@ -331,7 +343,7 @@ const AdminEditorial = () => {
                 <Input
                   type="number"
                   value={editorialSettings.maxComments}
-                  onChange={(e) => 
+                  onChange={(e) =>
                     setEditorialSettings({ ...editorialSettings, maxComments: parseInt(e.target.value) || 4 })
                   }
                   min={1}
@@ -369,7 +381,7 @@ const AdminEditorial = () => {
                   </div>
                   <Switch
                     checked={internshipSettings.acceptingApplications}
-                    onCheckedChange={(checked) => 
+                    onCheckedChange={(checked) =>
                       setInternshipSettings({ ...internshipSettings, acceptingApplications: checked })
                     }
                   />
@@ -382,7 +394,7 @@ const AdminEditorial = () => {
                   </div>
                   <Switch
                     checked={internshipSettings.showBannerOnHomepage}
-                    onCheckedChange={(checked) => 
+                    onCheckedChange={(checked) =>
                       setInternshipSettings({ ...internshipSettings, showBannerOnHomepage: checked })
                     }
                   />
@@ -395,7 +407,7 @@ const AdminEditorial = () => {
                   </div>
                   <Switch
                     checked={internshipSettings.requirePortfolio}
-                    onCheckedChange={(checked) => 
+                    onCheckedChange={(checked) =>
                       setInternshipSettings({ ...internshipSettings, requirePortfolio: checked })
                     }
                   />
@@ -408,7 +420,7 @@ const AdminEditorial = () => {
                   </div>
                   <Switch
                     checked={internshipSettings.autoReplyEnabled}
-                    onCheckedChange={(checked) => 
+                    onCheckedChange={(checked) =>
                       setInternshipSettings({ ...internshipSettings, autoReplyEnabled: checked })
                     }
                   />
@@ -495,7 +507,7 @@ const AdminEditorial = () => {
                                   <p className="font-medium">{selectedApplication.portfolio || 'Not provided'}</p>
                                 </div>
                               </div>
-                              
+
                               {selectedApplication.cvFileName && (
                                 <div>
                                   <Label className="text-xs text-muted-foreground">CV/Resume</Label>
@@ -508,28 +520,28 @@ const AdminEditorial = () => {
                                   </div>
                                 </div>
                               )}
-                              
+
                               <div>
                                 <Label className="text-xs text-muted-foreground">Cover Letter</Label>
                                 <p className="mt-1 text-sm p-3 bg-muted rounded-lg">{selectedApplication.coverLetter}</p>
                               </div>
                               <div className="flex gap-2">
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   className="bg-green-500 hover:bg-green-600"
                                   onClick={() => updateApplicationStatus(selectedApplication.id, 'shortlisted')}
                                 >
                                   Shortlist
                                 </Button>
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   variant="outline"
                                   onClick={() => updateApplicationStatus(selectedApplication.id, 'reviewed')}
                                 >
                                   Mark Reviewed
                                 </Button>
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   variant="destructive"
                                   onClick={() => updateApplicationStatus(selectedApplication.id, 'rejected')}
                                 >
@@ -653,8 +665,8 @@ const AdminEditorial = () => {
                     <DialogHeader>
                       <DialogTitle>{editingBenefit ? 'Edit Benefit' : 'Add Benefit'}</DialogTitle>
                     </DialogHeader>
-                    <BenefitForm 
-                      benefit={editingBenefit} 
+                    <BenefitForm
+                      benefit={editingBenefit}
                       onSave={handleSaveBenefit}
                       onCancel={() => setIsBenefitDialogOpen(false)}
                     />
@@ -672,8 +684,8 @@ const AdminEditorial = () => {
                       <p className="text-xs text-muted-foreground truncate">{benefit.description}</p>
                     </div>
                     <div className="flex gap-2">
-                      <Button 
-                        size="icon" 
+                      <Button
+                        size="icon"
                         variant="ghost"
                         onClick={() => {
                           setEditingBenefit(benefit);
@@ -682,8 +694,8 @@ const AdminEditorial = () => {
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button 
-                        size="icon" 
+                      <Button
+                        size="icon"
                         variant="ghost"
                         className="text-destructive"
                         onClick={() => handleDeleteBenefit(benefit.id)}
@@ -715,8 +727,8 @@ const AdminEditorial = () => {
                     <DialogHeader>
                       <DialogTitle>{editingDepartment ? 'Edit Department' : 'Add Department'}</DialogTitle>
                     </DialogHeader>
-                    <DepartmentForm 
-                      department={editingDepartment} 
+                    <DepartmentForm
+                      department={editingDepartment}
                       onSave={handleSaveDepartment}
                       onCancel={() => setIsDepartmentDialogOpen(false)}
                     />
@@ -734,8 +746,8 @@ const AdminEditorial = () => {
                       <p className="text-xs text-muted-foreground truncate">{dept.description}</p>
                     </div>
                     <div className="flex gap-2">
-                      <Button 
-                        size="icon" 
+                      <Button
+                        size="icon"
                         variant="ghost"
                         onClick={() => {
                           setEditingDepartment(dept);
@@ -744,8 +756,8 @@ const AdminEditorial = () => {
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button 
-                        size="icon" 
+                      <Button
+                        size="icon"
                         variant="ghost"
                         className="text-destructive"
                         onClick={() => handleDeleteDepartment(dept.id)}
@@ -777,8 +789,8 @@ const AdminEditorial = () => {
                     <DialogHeader>
                       <DialogTitle>{editingFaq ? 'Edit FAQ' : 'Add FAQ'}</DialogTitle>
                     </DialogHeader>
-                    <FAQForm 
-                      faq={editingFaq} 
+                    <FAQForm
+                      faq={editingFaq}
                       onSave={handleSaveFaq}
                       onCancel={() => setIsFaqDialogOpen(false)}
                     />
@@ -795,8 +807,8 @@ const AdminEditorial = () => {
                       <p className="text-xs text-muted-foreground truncate">{faq.answer}</p>
                     </div>
                     <div className="flex gap-2">
-                      <Button 
-                        size="icon" 
+                      <Button
+                        size="icon"
                         variant="ghost"
                         onClick={() => {
                           setEditingFaq(faq);
@@ -805,8 +817,8 @@ const AdminEditorial = () => {
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button 
-                        size="icon" 
+                      <Button
+                        size="icon"
                         variant="ghost"
                         className="text-destructive"
                         onClick={() => handleDeleteFaq(faq.id)}
@@ -826,11 +838,11 @@ const AdminEditorial = () => {
 };
 
 // Benefit Form Component
-const BenefitForm = ({ 
-  benefit, 
-  onSave, 
-  onCancel 
-}: { 
+const BenefitForm = ({
+  benefit,
+  onSave,
+  onCancel
+}: {
   benefit: InternshipBenefit | null;
   onSave: (benefit: InternshipBenefit) => void;
   onCancel: () => void;
@@ -892,11 +904,11 @@ const BenefitForm = ({
 };
 
 // Department Form Component
-const DepartmentForm = ({ 
-  department, 
-  onSave, 
-  onCancel 
-}: { 
+const DepartmentForm = ({
+  department,
+  onSave,
+  onCancel
+}: {
   department: InternshipDepartment | null;
   onSave: (department: InternshipDepartment) => void;
   onCancel: () => void;
@@ -958,11 +970,11 @@ const DepartmentForm = ({
 };
 
 // FAQ Form Component
-const FAQForm = ({ 
-  faq, 
-  onSave, 
-  onCancel 
-}: { 
+const FAQForm = ({
+  faq,
+  onSave,
+  onCancel
+}: {
   faq: InternshipFAQ | null;
   onSave: (faq: InternshipFAQ) => void;
   onCancel: () => void;

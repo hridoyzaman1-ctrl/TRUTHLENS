@@ -12,9 +12,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { headerMenuItems as initialMenuItems, categories } from '@/data/mockData';
 import { MenuItem } from '@/types/news';
 import { toast } from 'sonner';
+import { getMenuSettings, saveMenuSettings } from '@/lib/settingsService';
 
 const AdminMenu = () => {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(initialMenuItems);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(getMenuSettings(initialMenuItems));
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newItem, setNewItem] = useState<Partial<MenuItem>>({
     label: '',
@@ -27,25 +28,25 @@ const AdminMenu = () => {
   });
 
   const toggleVisibility = (id: string) => {
-    setMenuItems(menuItems.map(item => 
+    setMenuItems(menuItems.map(item =>
       item.id === id ? { ...item, isVisible: !item.isVisible } : item
     ));
   };
 
   const toggleHighlight = (id: string) => {
-    setMenuItems(menuItems.map(item => 
+    setMenuItems(menuItems.map(item =>
       item.id === id ? { ...item, highlight: !item.highlight } : item
     ));
   };
 
   const toggleMainNav = (id: string) => {
-    setMenuItems(menuItems.map(item => 
+    setMenuItems(menuItems.map(item =>
       item.id === id ? { ...item, showInMainNav: !item.showInMainNav } : item
     ));
   };
 
   const updateItem = (id: string, field: keyof MenuItem, value: string | boolean) => {
-    setMenuItems(menuItems.map(item => 
+    setMenuItems(menuItems.map(item =>
       item.id === id ? { ...item, [field]: value } : item
     ));
   };
@@ -84,19 +85,20 @@ const AdminMenu = () => {
     if ((direction === 'up' && index === 0) || (direction === 'down' && index === menuItems.length - 1)) {
       return;
     }
-    
+
     const newItems = [...menuItems];
     const swapIndex = direction === 'up' ? index - 1 : index + 1;
     [newItems[index], newItems[swapIndex]] = [newItems[swapIndex], newItems[index]];
-    
+
     newItems.forEach((item, i) => {
       item.order = i + 1;
     });
-    
+
     setMenuItems(newItems);
   };
 
   const handleSave = () => {
+    saveMenuSettings(menuItems);
     toast.success('Menu settings saved successfully!');
   };
 
@@ -155,8 +157,8 @@ const AdminMenu = () => {
                 </div>
                 <div>
                   <Label>Type</Label>
-                  <Select 
-                    value={newItem.type} 
+                  <Select
+                    value={newItem.type}
                     onValueChange={(v) => setNewItem({ ...newItem, type: v as 'category' | 'page' | 'external' })}
                   >
                     <SelectTrigger className="mt-1">
@@ -229,24 +231,24 @@ const AdminMenu = () => {
                 <CardContent>
                   <div className="space-y-2">
                     {menuItems.sort((a, b) => a.order - b.order).map((item, index) => (
-                      <div 
-                        key={item.id} 
+                      <div
+                        key={item.id}
                         className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg border ${item.isVisible ? 'border-border bg-card' : 'border-dashed border-muted bg-muted/30 opacity-60'}`}
                       >
                         <div className="flex items-center gap-2 sm:gap-3">
                           <div className="flex flex-col gap-0.5">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-5 w-5"
                               onClick={() => moveItem(item.id, 'up')}
                               disabled={index === 0}
                             >
                               ▲
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-5 w-5"
                               onClick={() => moveItem(item.id, 'down')}
                               disabled={index === menuItems.length - 1}
@@ -254,9 +256,9 @@ const AdminMenu = () => {
                               ▼
                             </Button>
                           </div>
-                          
+
                           <span className="text-xs font-bold text-muted-foreground w-5">{index + 1}</span>
-                          
+
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               {item.icon && <span className="text-sm">{item.icon}</span>}

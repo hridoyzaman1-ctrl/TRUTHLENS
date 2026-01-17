@@ -3,6 +3,7 @@ import { Clock, Eye, PlayCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Article } from '@/types/news';
 import { formatDistanceToNow } from 'date-fns';
+import { getYoutubeThumbnail, FALLBACK_IMAGE } from '@/lib/videoUtils';
 
 interface ArticleCardProps {
   article: Article;
@@ -27,6 +28,17 @@ export const ArticleCard = ({ article, variant = 'default' }: ArticleCardProps) 
     return colors[category] || 'bg-primary';
   };
 
+  const getDisplayImage = () => {
+    if (article.featuredImage) return article.featuredImage;
+    if (article.videoUrl) {
+      const thumb = getYoutubeThumbnail(article.videoUrl);
+      if (thumb) return thumb;
+    }
+    return FALLBACK_IMAGE;
+  };
+
+  const displayImage = getDisplayImage();
+
   if (variant === 'compact') {
     return (
       <Link
@@ -35,10 +47,11 @@ export const ArticleCard = ({ article, variant = 'default' }: ArticleCardProps) 
       >
         <div className="aspect-[16/9] overflow-hidden relative">
           <img
-            src={article.featuredImage}
+            src={displayImage}
             alt={article.title}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
             loading="lazy"
+            onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
           />
           {article.hasVideo && (
             <div className="absolute top-1.5 right-1.5 flex items-center gap-1 bg-black/60 px-1.5 py-0.5 rounded-full">
@@ -70,10 +83,11 @@ export const ArticleCard = ({ article, variant = 'default' }: ArticleCardProps) 
       >
         <div className="aspect-[4/3] relative">
           <img
-            src={article.featuredImage}
+            src={displayImage}
             alt={article.title}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
+            onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
           />
           {article.hasVideo && (
             <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 px-2 py-1 rounded-full">
@@ -103,10 +117,11 @@ export const ArticleCard = ({ article, variant = 'default' }: ArticleCardProps) 
       >
         <div className="aspect-video overflow-hidden relative flex-shrink-0">
           <img
-            src={article.featuredImage}
+            src={displayImage}
             alt={article.title}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
+            onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
           />
           <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
             <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
@@ -143,10 +158,11 @@ export const ArticleCard = ({ article, variant = 'default' }: ArticleCardProps) 
     >
       <div className="aspect-video overflow-hidden relative">
         <img
-          src={article.featuredImage}
+          src={displayImage}
           alt={article.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
+          onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
         />
         {article.hasVideo && (
           <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 px-2 py-1 rounded-full">

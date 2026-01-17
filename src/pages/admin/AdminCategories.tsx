@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Category } from '@/types/news';
 import { useAdminAuth } from '@/context/AdminAuthContext';
+import { getCategories, saveCategories, CategoryConfig } from '@/lib/settingsService';
 
 interface CategoryItem {
   id: Category;
@@ -24,7 +25,7 @@ interface CategoryItem {
 
 const AdminCategories = () => {
   const { hasPermission } = useAdminAuth();
-  const [categoriesList, setCategoriesList] = useState<CategoryItem[]>(initialCategories);
+  const [categoriesList, setCategoriesList] = useState<CategoryItem[]>(getCategories(initialCategories) as CategoryItem[]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
   const [formData, setFormData] = useState({
@@ -66,13 +67,14 @@ const AdminCategories = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    let updatedList: CategoryItem[];
     if (editingCategory) {
-      setCategoriesList(prev => prev.map(cat => 
-        cat.id === editingCategory.id 
+      updatedList = categoriesList.map(cat =>
+        cat.id === editingCategory.id
           ? { ...cat, name: formData.name, description: formData.description }
           : cat
-      ));
+      );
       toast.success('Category updated successfully!');
     } else {
       const newCategory: CategoryItem = {
@@ -80,16 +82,20 @@ const AdminCategories = () => {
         name: formData.name,
         description: formData.description
       };
-      setCategoriesList(prev => [...prev, newCategory]);
+      updatedList = [...categoriesList, newCategory];
       toast.success('Category created successfully!');
     }
 
+    setCategoriesList(updatedList);
+    saveCategories(updatedList as CategoryConfig[]);
     setIsDialogOpen(false);
   };
 
   const handleDelete = (id: string) => {
     if (window.confirm('Are you sure you want to delete this category?')) {
-      setCategoriesList(prev => prev.filter(cat => cat.id !== id));
+      const updatedList = categoriesList.filter(cat => cat.id !== id);
+      setCategoriesList(updatedList);
+      saveCategories(updatedList as CategoryConfig[]);
       toast.success('Category deleted successfully!');
     }
   };

@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { articles } from '@/data/mockData';
+import { useState, useEffect, useCallback } from 'react';
+import { getArticles } from '@/lib/articleService';
 import { PlayCircle, Video, Clock, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VideoPlayerModal } from './VideoPlayerModal';
 import { formatDistanceToNow } from 'date-fns';
 import { Article } from '@/types/news';
+import { getSectionsSettings } from '@/lib/settingsService';
 
 const getCategoryColor = (category: string) => {
   const colors: Record<string, string> = {
@@ -29,55 +30,96 @@ interface VideoCardProps {
   onPlay: () => void;
 }
 
-const VideoCard = ({ article, onPlay }: VideoCardProps) => (
-  <div 
-    onClick={onPlay}
-    className="group block overflow-hidden rounded-xl bg-card border border-border transition-shadow hover:shadow-lg h-full cursor-pointer"
-  >
-    <div className="aspect-video overflow-hidden relative flex-shrink-0">
-      <img
-        src={article.featuredImage}
-        alt={article.title}
-        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-        loading="lazy"
-      />
-      <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
-        <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
-          <PlayCircle className="h-6 w-6 md:h-8 md:w-8 text-primary" />
+import { getYoutubeThumbnail, FALLBACK_IMAGE } from '@/lib/videoUtils';
+
+// Default sections definition for fallback
+const defaultSections = [
+  { id: 'video-stories', name: 'Video Stories', enabled: true, order: 3, maxArticles: 4, selectedArticleIds: [], showOnHomepage: true }
+];
+
+const VideoCard = ({ article, onPlay }: VideoCardProps) => {
+  const displayImage = article.featuredImage ||
+    (article.videoUrl ? getYoutubeThumbnail(article.videoUrl) : null) ||
+    FALLBACK_IMAGE;
+
+  return (
+    <div
+      onClick={onPlay}
+      className="group block overflow-hidden rounded-xl bg-card border border-border transition-shadow hover:shadow-lg h-full cursor-pointer"
+    >
+      <div className="aspect-video overflow-hidden relative flex-shrink-0">
+        <img
+          src={displayImage}
+          alt={article.title}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+          onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
+        />
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+          <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+            <PlayCircle className="h-6 w-6 md:h-8 md:w-8 text-primary" />
+          </div>
+        </div>
+        <Badge className={`absolute top-2 left-2 ${getCategoryColor(article.category)} text-white border-0 text-[10px]`}>
+          {article.category.replace('-', ' ')}
+        </Badge>
+      </div>
+      <div className="p-3 md:p-4">
+        <h3 className="font-display text-sm md:text-base font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors min-h-[2.5rem] md:min-h-[3rem]">
+          {article.title}
+        </h3>
+        <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">{formatDistanceToNow(article.publishedAt, { addSuffix: true })}</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <Eye className="h-3 w-3 flex-shrink-0" />
+            {article.views.toLocaleString()}
+          </span>
         </div>
       </div>
-      <Badge className={`absolute top-2 left-2 ${getCategoryColor(article.category)} text-white border-0 text-[10px]`}>
-        {article.category.replace('-', ' ')}
-      </Badge>
     </div>
-    <div className="p-3 md:p-4">
-      <h3 className="font-display text-sm md:text-base font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors min-h-[2.5rem] md:min-h-[3rem]">
-        {article.title}
-      </h3>
-      <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <Clock className="h-3 w-3 flex-shrink-0" />
-          <span className="truncate">{formatDistanceToNow(article.publishedAt, { addSuffix: true })}</span>
-        </span>
-        <span className="flex items-center gap-1">
-          <Eye className="h-3 w-3 flex-shrink-0" />
-          {article.views.toLocaleString()}
-        </span>
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 export const VideoSection = () => {
-  const videoArticles = articles.filter(a => a.hasVideo && a.videoUrl).slice(0, 4);
+  const [articlesList, setArticlesList] = useState<Article[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<Article | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Simulate loading
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 700);
-    return () => clearTimeout(timer);
+  const fetchData = useCallback(() => {
+    setArticlesList(getArticles());
   }, []);
+
+  // Load data and simulate loading
+  useEffect(() => {
+    fetchData();
+    window.addEventListener('articlesUpdated', fetchData);
+    window.addEventListener('sectionsSettingsUpdated', fetchData);
+
+    const timer = setTimeout(() => setIsLoading(false), 700);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('articlesUpdated', fetchData);
+      window.removeEventListener('sectionsSettingsUpdated', fetchData);
+    };
+  }, [fetchData]);
+
+  // Get video section settings
+  const sections = getSectionsSettings(defaultSections as any);
+  const videoSection = sections.find(s => s.id === 'video-stories');
+
+  // If we have selected articles in settings, use those. Otherwise fallback to filter by hasVideo.
+  let videoArticles: Article[] = [];
+  if (videoSection && videoSection.selectedArticleIds.length > 0) {
+    videoArticles = videoSection.selectedArticleIds
+      .map(id => articlesList.find(a => a.id === id))
+      .filter((a): a is Article => !!a && !!a.videoUrl);
+  } else {
+    // Fallback: filter by hasVideo
+    videoArticles = articlesList.filter(a => (a.hasVideo || !!a.videoUrl) && a.videoUrl).slice(0, 4);
+  }
 
   if (videoArticles.length === 0 && !isLoading) return null;
 
@@ -131,8 +173,8 @@ export const VideoSection = () => {
           <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             {videoArticles.map((article) => (
               <div key={article.id} className="relative isolate">
-                <VideoCard 
-                  article={article} 
+                <VideoCard
+                  article={article}
                   onPlay={() => setSelectedVideo(article)}
                 />
               </div>

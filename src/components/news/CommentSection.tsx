@@ -23,19 +23,19 @@ export interface Comment {
 const getMockComments = (articleId: string): Comment[] => [
   {
     id: '1',
-    author: 'John Doe',
-    content: 'This is a really insightful article. The research is thorough and well-presented.',
+    author: 'Rahim Uddin',
+    content: 'Very important issue raised here. We need more awareness on this matter.',
     articleId,
-    createdAt: new Date('2026-01-13T10:00:00'),
+    createdAt: new Date('2026-01-16T10:00:00'),
     likes: 12,
     status: 'approved',
     replies: [
       {
         id: '1-1',
-        author: 'Jane Smith',
-        content: 'I agree! The author did a great job covering all the key points.',
+        author: 'Fatima Begum',
+        content: 'Absolutely agree. The authorities should take note of this immediately.',
         articleId,
-        createdAt: new Date('2026-01-13T12:00:00'),
+        createdAt: new Date('2026-01-16T12:00:00'),
         likes: 5,
         status: 'approved'
       }
@@ -43,10 +43,10 @@ const getMockComments = (articleId: string): Comment[] => [
   },
   {
     id: '2',
-    author: 'Sarah Wilson',
-    content: 'Great coverage of an important topic. Would love to see more follow-up stories on this.',
+    author: 'Karim Hasan',
+    content: 'Thank you for the detailed report. Identifying the root cause is crucial.',
     articleId,
-    createdAt: new Date('2026-01-12T15:00:00'),
+    createdAt: new Date('2026-01-15T15:00:00'),
     likes: 8,
     status: 'approved'
   }
@@ -64,25 +64,22 @@ export const CommentSection = ({ articleId }: CommentSectionProps) => {
   const [replyContent, setReplyContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch comments - ready for real-time integration
+  // Load comments from localStorage
   const fetchComments = useCallback(async () => {
     setIsLoading(true);
     try {
-      // TODO: Replace with actual database query when connected to Cloud
-      // Example with Supabase:
-      // const { data, error } = await supabase
-      //   .from('comments')
-      //   .select('*, replies:comments(*)') 
-      //   .eq('article_id', articleId)
-      //   .eq('status', 'approved')
-      //   .is('parent_id', null)
-      //   .order('created_at', { ascending: false });
-      // if (error) throw error;
-      // setComments(data);
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setComments(getMockComments(articleId));
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+
+      const stored = localStorage.getItem(`comments_${articleId}`);
+      if (stored) {
+        setComments(JSON.parse(stored));
+      } else {
+        // Fallback to mock data ONLY if no local storage exists for this article
+        const initialMock = getMockComments(articleId);
+        setComments(initialMock);
+        // Save initial mock to storage so we can add to it later
+        localStorage.setItem(`comments_${articleId}`, JSON.stringify(initialMock));
+      }
     } catch (error) {
       console.error('Error fetching comments:', error);
       toast.error('Failed to load comments');
@@ -91,7 +88,6 @@ export const CommentSection = ({ articleId }: CommentSectionProps) => {
     }
   }, [articleId]);
 
-  // Initial fetch
   useEffect(() => {
     fetchComments();
   }, [fetchComments]);
@@ -140,23 +136,8 @@ export const CommentSection = ({ articleId }: CommentSectionProps) => {
 
     setIsSubmitting(true);
     try {
-      // TODO: Replace with actual database insert when connected to Cloud
-      // Example with Supabase:
-      // const { data, error } = await supabase
-      //   .from('comments')
-      //   .insert({
-      //     author: newComment.author,
-      //     email: newComment.email,
-      //     content: newComment.content,
-      //     article_id: articleId,
-      //     status: 'pending' // Comments go to moderation first
-      //   })
-      //   .select()
-      //   .single();
-      // if (error) throw error;
-      
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       const comment: Comment = {
         id: Date.now().toString(),
         author: newComment.author,
@@ -165,11 +146,14 @@ export const CommentSection = ({ articleId }: CommentSectionProps) => {
         articleId,
         createdAt: new Date(),
         likes: 0,
-        status: 'approved', // In production, this would be 'pending'
+        status: 'approved',
         replies: []
       };
 
-      setComments([comment, ...comments]);
+      const updatedComments = [comment, ...comments];
+      setComments(updatedComments);
+      localStorage.setItem(`comments_${articleId}`, JSON.stringify(updatedComments));
+
       setNewComment({ author: '', email: '', content: '' });
       toast.success('Comment posted successfully!');
     } catch (error) {
@@ -188,19 +172,6 @@ export const CommentSection = ({ articleId }: CommentSectionProps) => {
 
     setIsSubmitting(true);
     try {
-      // TODO: Replace with actual database insert when connected to Cloud
-      // Example with Supabase:
-      // const { error } = await supabase
-      //   .from('comments')
-      //   .insert({
-      //     author: 'Guest User',
-      //     content: replyContent,
-      //     article_id: articleId,
-      //     parent_id: parentId,
-      //     status: 'pending'
-      //   });
-      // if (error) throw error;
-
       await new Promise(resolve => setTimeout(resolve, 300));
 
       const reply: Comment = {
@@ -213,7 +184,7 @@ export const CommentSection = ({ articleId }: CommentSectionProps) => {
         status: 'approved'
       };
 
-      setComments(comments.map(comment => {
+      const updatedComments = comments.map(comment => {
         if (comment.id === parentId) {
           return {
             ...comment,
@@ -221,7 +192,10 @@ export const CommentSection = ({ articleId }: CommentSectionProps) => {
           };
         }
         return comment;
-      }));
+      });
+
+      setComments(updatedComments);
+      localStorage.setItem(`comments_${articleId}`, JSON.stringify(updatedComments));
 
       setReplyingTo(null);
       setReplyContent('');
@@ -239,7 +213,7 @@ export const CommentSection = ({ articleId }: CommentSectionProps) => {
     // Example with Supabase:
     // const { error } = await supabase.rpc('increment_likes', { comment_id: commentId });
     // if (error) throw error;
-    
+
     setComments(comments.map(comment => {
       if (isReply && parentId && comment.id === parentId) {
         return {

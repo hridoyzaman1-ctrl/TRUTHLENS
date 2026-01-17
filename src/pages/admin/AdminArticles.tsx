@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { articles, categories, authors } from '@/data/mockData';
+import { useState, useEffect } from 'react';
+import { categories, authors } from '@/data/mockData'; // Keep categories/authors static for now
+import { getArticles, saveArticles } from '@/lib/articleService';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, Eye, Search, Image, Video, Save, CheckCircle, XCircle, Clock, Send, AlertCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Search, Image, Video, Save, CheckCircle, XCircle, Clock, Send, AlertCircle, Upload } from 'lucide-react';
 import { Article, Category } from '@/types/news';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -41,15 +42,27 @@ interface ExtendedArticle extends Omit<Article, 'status'> {
 const AdminArticles = () => {
   const { currentUser, hasPermission } = useAdminAuth();
   const { logActivity } = useActivityLog();
-  
-  // Extend articles with proper status
-  const [articlesList, setArticlesList] = useState<ExtendedArticle[]>(
-    articles.map(a => ({ 
-      ...a, 
-      status: a.status as ArticleStatus,
-      submittedBy: a.author.id 
-    }))
-  );
+
+  // Load articles from service
+  const [articlesList, setArticlesList] = useState<ExtendedArticle[]>([]);
+
+  useEffect(() => {
+    const loadedArticles = getArticles();
+    setArticlesList(loadedArticles.map(a => ({
+      ...a,
+      status: (a.status as ArticleStatus) || 'published', // ensure status exists
+      submittedBy: a.author.id // fallback
+    })));
+  }, []);
+
+  // Save changes whenever list updates
+  const updateArticlesList = (newList: ExtendedArticle[]) => {
+    setArticlesList(newList);
+    // Convert ExtendedArticle back to Article for storage
+    // We treat 'status' as string in the base type, so it fits
+    saveArticles(newList as unknown as Article[]);
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -94,15 +107,15 @@ const AdminArticles = () => {
 
   const filteredArticles = visibleArticles.filter(article => {
     const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          article.author.name.toLowerCase().includes(searchQuery.toLowerCase());
+      article.author.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = filterCategory === 'all' || article.category === filterCategory;
     const matchesStatus = filterStatus === 'all' || article.status === filterStatus;
-    
+
     // Tab filtering
     if (activeTab === 'pending' && article.status !== 'pending_review') return false;
     if (activeTab === 'published' && article.status !== 'published') return false;
     if (activeTab === 'draft' && article.status !== 'draft') return false;
-    
+
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
@@ -127,12 +140,19 @@ const AdminArticles = () => {
   };
 
   const openEditDialog = (article: ExtendedArticle) => {
-    // Check if user can edit this article
-    if (!canEditAll && article.submittedBy !== currentUser?.id && article.author.id !== currentUser?.id) {
+    // Permission Check:
+    // 1. Admins/Editors (canEditAll) can edit ANY article (published or not, any author).
+    // 2. Authors/Journalists can only edit their OWN articles.
+    const isOwner = article.submittedBy === currentUser?.id || article.author.id === currentUser?.id;
+
+    if (!canEditAll && !isOwner) {
       toast.error('You can only edit your own articles');
       return;
     }
-    
+
+    // Admins can edit published articles freely.
+    // Authors might be restricted from editing published articles in the future, but for now we follow the "edit own" rule.
+
     setEditingArticle(article);
     setFormData({
       title: article.title,
@@ -156,33 +176,55 @@ const AdminArticles = () => {
     setIsReviewDialogOpen(true);
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'featuredImage' | 'videoUrl') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 5MB limit mainly for localStorage safety
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData(prev => ({ ...prev, [field]: reader.result as string }));
+      toast.success('File uploaded successfully');
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const author = authors.find(a => a.id === formData.authorId) || authors[0];
     const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(Boolean);
 
+    let updatedList = [...articlesList];
+
     if (editingArticle) {
       // Update existing article
-      setArticlesList(prev => prev.map(a => 
-        a.id === editingArticle.id 
+      updatedList = updatedList.map(a =>
+        a.id === editingArticle.id
           ? {
-              ...a,
-              title: formData.title,
-              slug: formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-              excerpt: formData.excerpt,
-              content: formData.content,
-              category: formData.category,
-              author,
-              featuredImage: formData.featuredImage,
-              videoUrl: formData.videoUrl || undefined,
-              tags: tagsArray,
-              isBreaking: canSetBreaking ? formData.isBreaking : a.isBreaking,
-              isFeatured: canSetFeatured ? formData.isFeatured : a.isFeatured,
-              status: formData.status,
-              updatedAt: new Date()
-            }
+            ...a,
+            title: formData.title,
+            slug: formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            excerpt: formData.excerpt,
+            content: formData.content,
+            category: formData.category,
+            author,
+            featuredImage: formData.featuredImage,
+            videoUrl: formData.videoUrl || undefined,
+            hasVideo: !!formData.videoUrl,
+            tags: tagsArray,
+            isBreaking: canSetBreaking ? formData.isBreaking : a.isBreaking,
+            isFeatured: canSetFeatured ? formData.isFeatured : a.isFeatured,
+            status: formData.status,
+            updatedAt: new Date()
+          }
           : a
-      ));
+      );
+
       logActivity('update', 'article', {
         resourceId: editingArticle.id,
         resourceName: formData.title,
@@ -201,6 +243,7 @@ const AdminArticles = () => {
         author,
         featuredImage: formData.featuredImage || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1200',
         videoUrl: formData.videoUrl || undefined,
+        hasVideo: !!formData.videoUrl,
         tags: tagsArray,
         isBreaking: canSetBreaking ? formData.isBreaking : false,
         isFeatured: canSetFeatured ? formData.isFeatured : false,
@@ -211,7 +254,9 @@ const AdminArticles = () => {
         views: 0,
         submittedBy: currentUser?.id
       };
-      setArticlesList(prev => [newArticle, ...prev]);
+
+      updatedList = [newArticle, ...updatedList];
+
       logActivity('create', 'article', {
         resourceId: newArticle.id,
         resourceName: formData.title,
@@ -220,15 +265,18 @@ const AdminArticles = () => {
       toast.success('Article created successfully!');
     }
 
+    updateArticlesList(updatedList);
     setIsDialogOpen(false);
   };
 
   const handleSubmitForReview = (article: ExtendedArticle) => {
-    setArticlesList(prev => prev.map(a => 
-      a.id === article.id 
+    const updatedList = articlesList.map(a =>
+      a.id === article.id
         ? { ...a, status: 'pending_review' as ArticleStatus, updatedAt: new Date() }
         : a
-    ));
+    );
+    updateArticlesList(updatedList);
+
     logActivity('submit_review', 'article', {
       resourceId: article.id,
       resourceName: article.title,
@@ -239,19 +287,21 @@ const AdminArticles = () => {
 
   const handleApprove = () => {
     if (!reviewingArticle) return;
-    
-    setArticlesList(prev => prev.map(a => 
-      a.id === reviewingArticle.id 
-        ? { 
-            ...a, 
-            status: 'published' as ArticleStatus, 
-            publishedAt: new Date(),
-            reviewedBy: currentUser?.id,
-            reviewNote: reviewNote || undefined,
-            updatedAt: new Date() 
-          }
+
+    const updatedList = articlesList.map(a =>
+      a.id === reviewingArticle.id
+        ? {
+          ...a,
+          status: 'published' as ArticleStatus,
+          publishedAt: new Date(),
+          reviewedBy: currentUser?.id,
+          reviewNote: reviewNote || undefined,
+          updatedAt: new Date()
+        }
         : a
-    ));
+    );
+    updateArticlesList(updatedList);
+
     logActivity('approve', 'article', {
       resourceId: reviewingArticle.id,
       resourceName: reviewingArticle.title,
@@ -266,18 +316,20 @@ const AdminArticles = () => {
       toast.error('Please provide a reason for rejection');
       return;
     }
-    
-    setArticlesList(prev => prev.map(a => 
-      a.id === reviewingArticle.id 
-        ? { 
-            ...a, 
-            status: 'rejected' as ArticleStatus, 
-            reviewedBy: currentUser?.id,
-            reviewNote: reviewNote,
-            updatedAt: new Date() 
-          }
+
+    const updatedList = articlesList.map(a =>
+      a.id === reviewingArticle.id
+        ? {
+          ...a,
+          status: 'rejected' as ArticleStatus,
+          reviewedBy: currentUser?.id,
+          reviewNote: reviewNote,
+          updatedAt: new Date()
+        }
         : a
-    ));
+    );
+    updateArticlesList(updatedList);
+
     logActivity('reject', 'article', {
       resourceId: reviewingArticle.id,
       resourceName: reviewingArticle.title,
@@ -290,15 +342,17 @@ const AdminArticles = () => {
   const handleDelete = (id: string) => {
     const article = articlesList.find(a => a.id === id);
     if (!article) return;
-    
+
     // Check permissions
     if (!canDeleteAll && article.submittedBy !== currentUser?.id && article.author.id !== currentUser?.id) {
       toast.error('You can only delete your own articles');
       return;
     }
-    
+
     if (window.confirm('Are you sure you want to delete this article?')) {
-      setArticlesList(prev => prev.filter(a => a.id !== id));
+      const updatedList = articlesList.filter(a => a.id !== id);
+      updateArticlesList(updatedList);
+
       logActivity('delete', 'article', {
         resourceId: id,
         resourceName: article.title,
@@ -421,7 +475,8 @@ const AdminArticles = () => {
       </div>
 
       {/* Articles Table */}
-      <div className="rounded-xl bg-card border border-border overflow-hidden">
+      {/* Desktop Table View */}
+      <div className="hidden md:block rounded-xl bg-card border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted">
@@ -481,24 +536,24 @@ const AdminArticles = () => {
                           <Eye className="h-4 w-4" />
                         </a>
                       </Button>
-                      
+
                       {/* Review button for pending articles */}
                       {canReview && article.status === 'pending_review' && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="text-orange-500"
                           onClick={() => openReviewDialog(article)}
                         >
                           <Clock className="h-4 w-4" />
                         </Button>
                       )}
-                      
+
                       {/* Submit for review button for drafts */}
                       {!canPublishDirectly && article.status === 'draft' && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="text-blue-500"
                           onClick={() => handleSubmitForReview(article)}
                           title="Submit for Review"
@@ -506,7 +561,7 @@ const AdminArticles = () => {
                           <Send className="h-4 w-4" />
                         </Button>
                       )}
-                      
+
                       <Button variant="ghost" size="icon" onClick={() => openEditDialog(article)}>
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -523,6 +578,97 @@ const AdminArticles = () => {
 
         {filteredArticles.length === 0 && (
           <div className="py-12 text-center">
+            <p className="text-muted-foreground">No articles found</p>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {filteredArticles.map((article) => (
+          <div key={article.id} className="bg-card rounded-xl border border-border p-4 space-y-3 shadow-sm">
+            <div className="flex gap-3">
+              <img
+                src={article.featuredImage}
+                alt=""
+                className="h-16 w-24 rounded-lg object-cover flex-shrink-0 bg-muted"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <h4 className="font-medium text-foreground text-sm line-clamp-2 leading-tight">{article.title}</h4>
+                </div>
+                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                  <span className="truncate">By {article.author.name}</span>
+                  <span>•</span>
+                  <span>{format(article.publishedAt, 'MMM d, yyyy')}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <Badge variant="outline" className="capitalize text-xs">{article.category.replace('-', ' ')}</Badge>
+              <div className="flex gap-1">
+                {getStatusBadge(article.status)}
+                {article.isBreaking && (
+                  <Badge className="bg-red-500/20 text-red-600 border-red-500/30 text-[10px] px-1.5">Breaking</Badge>
+                )}
+              </div>
+            </div>
+
+            {article.status === 'rejected' && article.reviewNote && (
+              <div className="bg-red-500/10 text-red-600 text-xs p-2 rounded">
+                <strong>Rejection Note:</strong> {article.reviewNote}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-2 pt-3 border-t border-border mt-2">
+              <div className="text-xs text-muted-foreground">
+                {article.views.toLocaleString()} views
+              </div>
+              <div className="flex justify-end gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <a href={`/article/${article.slug}`} target="_blank">
+                    <Eye className="h-4 w-4" />
+                  </a>
+                </Button>
+
+                {/* Review button for pending articles */}
+                {canReview && article.status === 'pending_review' && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-orange-500"
+                    onClick={() => openReviewDialog(article)}
+                  >
+                    <Clock className="h-4 w-4" />
+                  </Button>
+                )}
+
+                {/* Submit for review button for drafts */}
+                {!canPublishDirectly && article.status === 'draft' && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-blue-500"
+                    onClick={() => handleSubmitForReview(article)}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                )}
+
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(article)}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(article.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {filteredArticles.length === 0 && (
+          <div className="py-12 text-center bg-card rounded-xl border border-border">
             <p className="text-muted-foreground">No articles found</p>
           </div>
         )}
@@ -659,31 +805,76 @@ const AdminArticles = () => {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="featuredImage">Featured Image URL</Label>
-                <div className="relative">
-                  <Image className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="featuredImage"
-                    value={formData.featuredImage}
-                    onChange={(e) => setFormData({ ...formData, featuredImage: e.target.value })}
-                    placeholder="https://..."
-                    className="pl-9"
-                  />
-                </div>
+                <Label>Featured Image</Label>
+                <Tabs defaultValue="url" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="url">Image URL</TabsTrigger>
+                    <TabsTrigger value="upload">Upload</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="url" className="relative mt-2">
+                    <Image className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={formData.featuredImage}
+                      onChange={(e) => setFormData({ ...formData, featuredImage: e.target.value })}
+                      placeholder="https://..."
+                      className="pl-9"
+                    />
+                  </TabsContent>
+                  <TabsContent value="upload" className="mt-2">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleFileUpload(e, 'featuredImage')}
+                        className="cursor-pointer"
+                      />
+                    </div>
+                  </TabsContent>
+                </Tabs>
+                {formData.featuredImage && (
+                  <div className="mt-2 h-32 w-full overflow-hidden rounded-md border border-border bg-muted">
+                    <img src={formData.featuredImage} alt="Preview" className="h-full w-full object-cover" />
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="videoUrl">Video URL (optional)</Label>
-                <div className="relative">
-                  <Video className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="videoUrl"
-                    value={formData.videoUrl}
-                    onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-                    placeholder="https://youtube.com/..."
-                    className="pl-9"
-                  />
-                </div>
+                <Label>Video (optional)</Label>
+                <Tabs defaultValue="url" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="url">Video URL</TabsTrigger>
+                    <TabsTrigger value="upload">Upload</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="url" className="relative mt-2">
+                    <Video className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={formData.videoUrl}
+                      onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                      placeholder="https://youtube.com/..."
+                      className="pl-9"
+                    />
+                  </TabsContent>
+                  <TabsContent value="upload" className="mt-2">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept="video/*"
+                        onChange={(e) => handleFileUpload(e, 'videoUrl')}
+                        className="cursor-pointer"
+                      />
+                    </div>
+                  </TabsContent>
+                </Tabs>
+                {formData.videoUrl && (
+                  <div className="mt-2 p-2 bg-muted/50 rounded border border-border">
+                    <p className="text-xs text-green-600 flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" /> Video source set
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate mt-1">
+                      {formData.videoUrl.substring(0, 50)}...
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 

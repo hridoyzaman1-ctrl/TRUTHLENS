@@ -1,11 +1,49 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { articles } from '@/data/mockData';
+import { getArticles } from '@/lib/articleService';
+import { Article } from '@/types/news';
 import { ArticleCard } from './ArticleCard';
 import { Newspaper, Pen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getSectionsSettings } from '@/lib/settingsService';
+
+// Default sections definition for fallback
+const defaultSections = [
+  { id: 'editorial', name: 'Editorial & Opinion', enabled: true, order: 11, maxArticles: 4, selectedArticleIds: [], showOnHomepage: true, category: 'editorial' }
+];
 
 export const EditorialSection = () => {
-  const editorialArticles = articles.filter(a => a.category === 'editorial').slice(0, 4);
+  const [articlesList, setArticlesList] = useState<Article[]>([]);
+
+  const fetchData = useCallback(() => {
+    setArticlesList(getArticles());
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    window.addEventListener('articlesUpdated', fetchData);
+    window.addEventListener('sectionsSettingsUpdated', fetchData);
+    return () => {
+      window.removeEventListener('articlesUpdated', fetchData);
+      window.removeEventListener('sectionsSettingsUpdated', fetchData);
+    };
+  }, [fetchData]);
+
+  // Get editorial section settings
+  const sections = getSectionsSettings(defaultSections as any);
+  const editorialSection = sections.find(s => s.id === 'editorial');
+
+  // If we have selected articles in settings, use those. Otherwise fallback to category filter.
+  let editorialArticles: Article[] = [];
+  if (editorialSection && editorialSection.selectedArticleIds.length > 0) {
+    editorialArticles = editorialSection.selectedArticleIds
+      .map(id => articlesList.find(a => a.id === id))
+      .filter((a): a is Article => !!a);
+  } else {
+    // Fallback: filter by editorial category
+    editorialArticles = articlesList.filter(a => a.category === 'editorial').slice(0, 4);
+  }
+
   const mainEditorial = editorialArticles[0];
   const sideEditorials = editorialArticles.slice(1, 4);
 

@@ -15,27 +15,15 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { socialMediaLinks as initialSocialLinks, siteSettings as initialSiteSettings } from '@/data/mockData';
+import { socialMediaLinks as initialSocialLinks } from '@/data/mockData';
 import { SocialMediaLink } from '@/types/news';
 import { useAdminAuth } from '@/context/AdminAuthContext';
+import { getSiteSettings, saveSiteSettings, getSocialLinks, saveSocialLinks, SiteSettingsConfig } from '@/lib/settingsService';
 
 const AdminSettings = () => {
   const { hasPermission } = useAdminAuth();
-  const [socialLinks, setSocialLinks] = useState<SocialMediaLink[]>(initialSocialLinks);
-  const [settings, setSettings] = useState({
-    siteName: initialSiteSettings.siteName,
-    tagline: initialSiteSettings.tagline,
-    siteDescription: initialSiteSettings.siteDescription,
-    contactEmail: initialSiteSettings.contactEmail,
-    enableComments: true,
-    moderateComments: true,
-    enableNewsletter: true,
-    articlesPerPage: '10',
-    defaultCategory: 'national',
-    timezone: 'UTC',
-    dateFormat: 'MMM d, yyyy',
-    maintenanceMode: false
-  });
+  const [socialLinks, setSocialLinks] = useState<SocialMediaLink[]>(getSocialLinks(initialSocialLinks) as SocialMediaLink[]);
+  const [settings, setSettings] = useState<SiteSettingsConfig>(getSiteSettings());
 
   const canManageSettings = hasPermission('manageSettings');
 
@@ -53,15 +41,17 @@ const AdminSettings = () => {
   }
 
   const handleSave = () => {
+    saveSiteSettings(settings);
+    saveSocialLinks(socialLinks);
     toast.success('Settings saved successfully!');
   };
 
-  const updateSetting = (key: string, value: any) => {
+  const updateSetting = (key: keyof SiteSettingsConfig, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
   const updateSocialLink = (id: string, field: keyof SocialMediaLink, value: string | boolean) => {
-    setSocialLinks(prev => prev.map(link => 
+    setSocialLinks(prev => prev.map(link =>
       link.id === id ? { ...link, [field]: value } : link
     ));
   };
@@ -139,13 +129,12 @@ const AdminSettings = () => {
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2">
               {socialLinks.map((link) => (
-                <div 
-                  key={link.id} 
-                  className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
-                    link.isVisible && link.url 
-                      ? 'border-primary/30 bg-primary/5' 
-                      : 'border-border bg-muted/30 opacity-70'
-                  }`}
+                <div
+                  key={link.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${link.isVisible && link.url
+                    ? 'border-primary/30 bg-primary/5'
+                    : 'border-border bg-muted/30 opacity-70'
+                    }`}
                 >
                   <div className={`h-10 w-10 rounded-lg flex items-center justify-center text-white ${getSocialColor(link.platform)}`}>
                     {getSocialIcon(link.platform)}
@@ -154,9 +143,9 @@ const AdminSettings = () => {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-sm">{getPlatformName(link.platform)}</span>
                       {link.url && (
-                        <a 
-                          href={link.url} 
-                          target="_blank" 
+                        <a
+                          href={link.url}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="text-muted-foreground hover:text-primary"
                         >

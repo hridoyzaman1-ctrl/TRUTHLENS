@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
-import { articles } from '@/data/mockData';
+import { getArticles } from '@/lib/articleService';
+import { Article } from '@/types/news';
 import { ArticleCard } from '@/components/news/ArticleCard';
 import { ArticleCardSkeleton } from '@/components/ui/skeletons';
 import { PaginationControls } from '@/components/ui/pagination-controls';
@@ -53,23 +54,29 @@ const sortOptions = [
 const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
-  
+
   const [query, setQuery] = useState(initialQuery);
   const [category, setCategory] = useState('all');
   const [dateRange, setDateRange] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [articlesList, setArticlesList] = useState<Article[]>([]);
+
+  // Load articles
+  useEffect(() => {
+    setArticlesList(getArticles());
+  }, []);
 
   // Simulate loading state on filter changes
   useEffect(() => {
     setIsLoading(true);
     const timer = setTimeout(() => setIsLoading(false), 600);
     return () => clearTimeout(timer);
-  }, [category, dateRange, sortBy]);
+  }, [category, dateRange, sortBy, articlesList]); // Re-run when articles load
 
   const filteredArticles = useMemo(() => {
-    let results = [...articles];
+    let results = [...articlesList];
 
     // Text search
     if (query.trim()) {
@@ -128,7 +135,7 @@ const SearchPage = () => {
   }, [query, category, dateRange, sortBy]);
 
   const ITEMS_PER_PAGE = 9;
-  
+
   const {
     currentItems,
     currentPage,
@@ -164,7 +171,7 @@ const SearchPage = () => {
           <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-4">
             Search Articles
           </h1>
-          
+
           {/* Search Form */}
           <form onSubmit={handleSearch} className="flex gap-2">
             <div className="relative flex-1">
@@ -180,10 +187,10 @@ const SearchPage = () => {
             <Button type="submit" size="lg" className="h-12">
               Search
             </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="lg" 
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
               className="h-12 lg:hidden"
               onClick={() => setShowFilters(!showFilters)}
             >
@@ -305,7 +312,7 @@ const SearchPage = () => {
                 {query && <span> for "<span className="text-foreground font-medium">{query}</span>"</span>}
                 {totalPages > 1 && <span className="ml-1">• Page {currentPage} of {totalPages}</span>}
               </p>
-              
+
               {/* Mobile Sort */}
               <div className="lg:hidden">
                 <Select value={sortBy} onValueChange={setSortBy}>
@@ -337,7 +344,7 @@ const SearchPage = () => {
                     <ArticleCard key={article.id} article={article} />
                   ))}
                 </div>
-                
+
                 <PaginationControls
                   currentPage={currentPage}
                   totalPages={totalPages}

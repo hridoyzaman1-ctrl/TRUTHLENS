@@ -10,14 +10,15 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { contactInfoData as initialContacts, aboutInfoData as initialAbout, ContactInfo, AboutInfo } from '@/data/siteContactData';
+import { ContactInfo, AboutInfo } from '@/data/siteContactData';
+import { getContacts, saveContacts, getAboutInfo, saveAboutInfo } from '@/lib/contactService';
 import { toast } from 'sonner';
 import { useAdminAuth } from '@/context/AdminAuthContext';
 
 const AdminContactInfo = () => {
   const { hasPermission } = useAdminAuth();
-  const [contacts, setContacts] = useState<ContactInfo[]>(initialContacts);
-  const [aboutInfo, setAboutInfo] = useState<AboutInfo[]>(initialAbout);
+  const [contacts, setContacts] = useState<ContactInfo[]>(getContacts());
+  const [aboutInfo, setAboutInfo] = useState<AboutInfo[]>(getAboutInfo());
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [isAddAboutOpen, setIsAddAboutOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<ContactInfo | null>(null);
@@ -81,18 +82,24 @@ const AdminContactInfo = () => {
       showOnContactPage: newContact.showOnContactPage ?? true,
     };
 
-    setContacts([...contacts, contact]);
+    const updatedContacts = [...contacts, contact];
+    setContacts(updatedContacts);
+    saveContacts(updatedContacts);
     setNewContact({ type: 'email', label: '', value: '', isVisible: true, showInFooter: false, showOnContactPage: true });
     setIsAddContactOpen(false);
     toast.success('Contact added successfully');
   };
 
   const updateContact = (id: string, updates: Partial<ContactInfo>) => {
-    setContacts(contacts.map(c => c.id === id ? { ...c, ...updates } : c));
+    const updatedContacts = contacts.map(c => c.id === id ? { ...c, ...updates } : c);
+    setContacts(updatedContacts);
+    saveContacts(updatedContacts);
   };
 
   const deleteContact = (id: string) => {
-    setContacts(contacts.filter(c => c.id !== id));
+    const updatedContacts = contacts.filter(c => c.id !== id);
+    setContacts(updatedContacts);
+    saveContacts(updatedContacts);
     toast.success('Contact deleted');
   };
 
@@ -113,23 +120,29 @@ const AdminContactInfo = () => {
       order: aboutInfo.length + 1,
     };
 
-    setAboutInfo([...aboutInfo, about]);
+    const updatedAbout = [...aboutInfo, about];
+    setAboutInfo(updatedAbout);
+    saveAboutInfo(updatedAbout);
     setNewAbout({ section: 'general', title: '', content: '', icon: '', isVisible: true });
     setIsAddAboutOpen(false);
     toast.success('About item added successfully');
   };
 
   const updateAboutItem = (id: string, updates: Partial<AboutInfo>) => {
-    setAboutInfo(aboutInfo.map(a => a.id === id ? { ...a, ...updates } : a));
+    const updatedAbout = aboutInfo.map(a => a.id === id ? { ...a, ...updates } : a);
+    setAboutInfo(updatedAbout);
+    saveAboutInfo(updatedAbout);
   };
 
   const deleteAboutItem = (id: string) => {
-    setAboutInfo(aboutInfo.filter(a => a.id !== id));
+    const updatedAbout = aboutInfo.filter(a => a.id !== id);
+    setAboutInfo(updatedAbout);
+    saveAboutInfo(updatedAbout);
     toast.success('About item deleted');
   };
 
   const handleSave = () => {
-    // When Cloud is connected, this will save to the database
+    // Already saved on each operation, but this confirms for UX
     toast.success('Contact & About information saved successfully!');
   };
 
@@ -178,8 +191,8 @@ const AdminContactInfo = () => {
                     <div className="space-y-4 py-4">
                       <div>
                         <Label>Type *</Label>
-                        <Select 
-                          value={newContact.type} 
+                        <Select
+                          value={newContact.type}
                           onValueChange={(v) => setNewContact({ ...newContact, type: v as ContactInfo['type'] })}
                         >
                           <SelectTrigger className="mt-1">
@@ -249,11 +262,10 @@ const AdminContactInfo = () => {
             <CardContent>
               <div className="space-y-3">
                 {contacts.sort((a, b) => a.order - b.order).map((contact) => (
-                  <div 
+                  <div
                     key={contact.id}
-                    className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-lg border ${
-                      contact.isVisible ? 'border-border bg-card' : 'border-dashed border-muted bg-muted/30 opacity-60'
-                    }`}
+                    className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-lg border ${contact.isVisible ? 'border-border bg-card' : 'border-dashed border-muted bg-muted/30 opacity-60'
+                      }`}
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 flex-shrink-0">
@@ -340,8 +352,8 @@ const AdminContactInfo = () => {
                     <div className="space-y-4 py-4">
                       <div>
                         <Label>Section *</Label>
-                        <Select 
-                          value={newAbout.section} 
+                        <Select
+                          value={newAbout.section}
                           onValueChange={(v) => setNewAbout({ ...newAbout, section: v as AboutInfo['section'] })}
                         >
                           <SelectTrigger className="mt-1">
@@ -399,11 +411,10 @@ const AdminContactInfo = () => {
             <CardContent>
               <div className="space-y-3">
                 {aboutInfo.sort((a, b) => a.order - b.order).map((item) => (
-                  <div 
+                  <div
                     key={item.id}
-                    className={`flex flex-col gap-3 p-4 rounded-lg border ${
-                      item.isVisible ? 'border-border bg-card' : 'border-dashed border-muted bg-muted/30 opacity-60'
-                    }`}
+                    className={`flex flex-col gap-3 p-4 rounded-lg border ${item.isVisible ? 'border-border bg-card' : 'border-dashed border-muted bg-muted/30 opacity-60'
+                      }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
