@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20-slim
 
 # Set working directory
 WORKDIR /app
@@ -7,7 +7,6 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-# Note: verifying that we install all dependencies including build tools
 RUN npm install
 
 # Copy source code
