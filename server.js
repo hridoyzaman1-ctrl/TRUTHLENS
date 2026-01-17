@@ -1,51 +1,62 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import fs from 'fs';
+import pg from 'pg';
 
+const { Pool } = pg;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Data file path
-const DATA_DIR = process.env.DATA_DIR || './data';
-const DATA_FILE = path.join(DATA_DIR, 'database.json');
+// PostgreSQL connection
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+});
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-// Initialize data file if it doesn't exist
-const initData = () => {
-    if (!fs.existsSync(DATA_FILE)) {
-        const defaultData = {
-            articles: [],
-            featuredSettings: null,
-            sectionsSettings: null,
-            menuSettings: null,
-            siteSettings: null,
-            socialLinks: null,
-            categories: null,
-            contacts: null,
-            aboutInfo: null,
-            jobs: null,
-            teamMembers: null,
-            comments: {}
-        };
-        fs.writeFileSync(DATA_FILE, JSON.stringify(defaultData, null, 2));
+// Initialize database table
+const initDB = async () => {
+    try {
+        await pool.query(`
+      CREATE TABLE IF NOT EXISTS app_data (
+        key VARCHAR(255) PRIMARY KEY,
+        value JSONB,
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+        console.log('Database initialized');
+    } catch (error) {
+        console.error('Database init error:', error);
     }
 };
 
-const readData = () => {
-    initData();
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+// Get data by key
+const getData = async (key) => {
+    try {
+        const result = await pool.query('SELECT value FROM app_data WHERE key = $1', [key]);
+        return result.rows[0]?.value || null;
+    } catch (error) {
+        console.error('Error getting data:', error);
+        return null;
+    }
 };
 
-const writeData = (data) => {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+// Save data by key
+const saveData = async (key, value) => {
+    try {
+        await pool.query(`
+      INSERT INTO app_data (key, value, updated_at) 
+      VALUES ($1, $2, NOW())
+      ON CONFLICT (key) 
+      DO UPDATE SET value = $2, updated_at = NOW()
+    `, [key, JSON.stringify(value)]);
+        return true;
+    } catch (error) {
+        console.error('Error saving data:', error);
+        return false;
+    }
 };
 
 // Middleware
@@ -53,23 +64,28 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'dist')));
 
 // API Routes
-// Get all data for a key
-app.get('/api/:key', (req, res) => {
-    const data = readData();
-    res.json(data[req.params.key] || null);
+app.get('/api/:key', async (req, res) => {
+    const data = await getData(req.params.key);
+    res.json(data);
 });
 
-// Save data for a key
-app.post('/api/:key', (req, res) => {
-    const data = readData();
-    data[req.params.key] = req.body;
-    writeData(data);
-    res.json({ success: true });
+app.post('/api/:key', async (req, res) => {
+    const success = await saveData(req.params.key, req.body);
+    res.json({ success });
 });
 
-// Get all data (for initial load)
-app.get('/api', (req, res) => {
-    res.json(readData());
+// Get all data
+app.get('/api', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT key, value FROM app_data');
+        const data = {};
+        result.rows.forEach(row => {
+            data[row.key] = row.value;
+        });
+        res.json(data);
+    } catch (error) {
+        res.json({});
+    }
 });
 
 // Handle SPA routing
@@ -77,7 +93,15 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Data stored in: ${DATA_FILE}`);
-});
+// Start server
+const start = async () => {
+    if (process.env.DATABASE_URL) {
+        await initDB();
+    }
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+        console.log(`Database: ${process.env.DATABASE_URL ? 'PostgreSQL connected' : 'No database configured'}`);
+    });
+};
+
+start();
