@@ -10,14 +10,21 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// PostgreSQL connection
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
-});
+// PostgreSQL connection (only if DATABASE_URL exists)
+let pool = null;
+if (process.env.DATABASE_URL) {
+    pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+    });
+}
+
+// In-memory storage fallback
+let memoryStore = {};
 
 // Initialize database table
 const initDB = async () => {
+    if (!pool) return;
     try {
         await pool.query(`
       CREATE TABLE IF NOT EXISTS app_data (
@@ -28,35 +35,40 @@ const initDB = async () => {
     `);
         console.log('Database initialized');
     } catch (error) {
-        console.error('Database init error:', error);
+        console.error('Database init error:', error.message);
     }
 };
 
 // Get data by key
 const getData = async (key) => {
-    try {
-        const result = await pool.query('SELECT value FROM app_data WHERE key = $1', [key]);
-        return result.rows[0]?.value || null;
-    } catch (error) {
-        console.error('Error getting data:', error);
-        return null;
+    if (pool) {
+        try {
+            const result = await pool.query('SELECT value FROM app_data WHERE key = $1', [key]);
+            return result.rows[0]?.value || null;
+        } catch (error) {
+            console.error('DB get error:', error.message);
+        }
     }
+    return memoryStore[key] || null;
 };
 
 // Save data by key
 const saveData = async (key, value) => {
-    try {
-        await pool.query(`
-      INSERT INTO app_data (key, value, updated_at) 
-      VALUES ($1, $2, NOW())
-      ON CONFLICT (key) 
-      DO UPDATE SET value = $2, updated_at = NOW()
-    `, [key, JSON.stringify(value)]);
-        return true;
-    } catch (error) {
-        console.error('Error saving data:', error);
-        return false;
+    memoryStore[key] = value;
+    if (pool) {
+        try {
+            await pool.query(`
+        INSERT INTO app_data (key, value, updated_at) 
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (key) 
+        DO UPDATE SET value = $2, updated_at = NOW()
+      `, [key, JSON.stringify(value)]);
+            return true;
+        } catch (error) {
+            console.error('DB save error:', error.message);
+        }
     }
+    return true;
 };
 
 // Middleware
@@ -64,44 +76,35 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'dist')));
 
 // API Routes
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', database: !!pool });
+});
+
 app.get('/api/:key', async (req, res) => {
     const data = await getData(req.params.key);
     res.json(data);
 });
 
 app.post('/api/:key', async (req, res) => {
-    const success = await saveData(req.params.key, req.body);
-    res.json({ success });
+    await saveData(req.params.key, req.body);
+    res.json({ success: true });
 });
 
-// Get all data
-app.get('/api', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT key, value FROM app_data');
-        const data = {};
-        result.rows.forEach(row => {
-            data[row.key] = row.value;
-        });
-        res.json(data);
-    } catch (error) {
-        res.json({});
-    }
-});
-
-// Handle SPA routing
-app.get('*', (req, res) => {
+// Handle SPA routing - Express 5 syntax
+app.use((req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 // Start server
 const start = async () => {
-    if (process.env.DATABASE_URL) {
-        await initDB();
-    }
-    app.listen(PORT, () => {
+    await initDB();
+    app.listen(PORT, '0.0.0.0', () => {
         console.log(`Server running on port ${PORT}`);
-        console.log(`Database: ${process.env.DATABASE_URL ? 'PostgreSQL connected' : 'No database configured'}`);
+        console.log(`Database: ${pool ? 'PostgreSQL connected' : 'Using memory storage'}`);
     });
 };
 
-start();
+start().catch(err => {
+    console.error('Server start error:', err);
+    process.exit(1);
+});
