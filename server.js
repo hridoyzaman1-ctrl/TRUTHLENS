@@ -90,8 +90,8 @@ app.post('/api/:key', async (req, res) => {
     res.json({ success: true });
 });
 
-// Handle SPA routing - Express 5 syntax
-app.use((req, res) => {
+// Handle SPA routing - Express 4 syntax
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
