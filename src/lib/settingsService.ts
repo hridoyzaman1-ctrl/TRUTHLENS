@@ -59,6 +59,14 @@ export const getFeaturedSettings = (): FeaturedSettings => {
 export const saveFeaturedSettings = (settings: FeaturedSettings) => {
     localStorage.setItem(FEATURED_SETTINGS_KEY, JSON.stringify(settings));
     window.dispatchEvent(new Event('featuredSettingsUpdated'));
+    // Sync to backend in production
+    if (import.meta.env.PROD) {
+        fetch('/api/featuredSettings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        }).catch(console.error);
+    }
 };
 
 // --- Sections Settings ---

@@ -31,6 +31,14 @@ export const saveArticles = (articles: Article[]) => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(articles));
         // Dispatch a custom event so other components can listen for updates
         window.dispatchEvent(new Event('articlesUpdated'));
+        // Sync to backend in production
+        if (import.meta.env.PROD) {
+            fetch('/api/articles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(articles)
+            }).catch(console.error);
+        }
     } catch (error) {
         console.error('Error saving articles to storage:', error);
     }
