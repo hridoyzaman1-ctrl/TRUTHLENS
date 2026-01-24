@@ -1,49 +1,56 @@
+import { supabase } from './supabaseClient';
 import { Job } from '@/types/news';
-import { jobs as initialJobs } from '@/data/mockData';
 
-const JOBS_KEY = 'truthlens_jobs';
+export const getJobs = async (): Promise<Job[]> => {
+    const { data, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-export const getJobs = (): Job[] => {
-    const data = localStorage.getItem(JOBS_KEY);
-    if (!data) return initialJobs;
-    try {
-        const parsed = JSON.parse(data);
-        // Convert date strings back to Date objects
-        return parsed.map((job: any) => ({
-            ...job,
-            deadline: new Date(job.deadline),
-            createdAt: new Date(job.createdAt)
-        }));
-    } catch (error) {
-        console.error('Error parsing jobs', error);
-        return initialJobs;
+    if (error) {
+        console.error('Error fetching jobs:', error);
+        return [];
+    }
+
+    return data.map((job: any) => ({
+        id: job.id,
+        title: job.title,
+        department: job.department,
+        type: job.type,
+        description: job.description,
+        requirements: job.requirements || [],
+        deadline: new Date(job.deadline),
+        createdAt: new Date(job.created_at),
+        isOpen: job.is_open
+    }));
+};
+
+export const saveJob = async (job: Partial<Job>) => {
+    const jobData = {
+        title: job.title,
+        department: job.department,
+        type: job.type,
+        description: job.description,
+        requirements: job.requirements,
+        deadline: job.deadline ? new Date(job.deadline).toISOString() : null,
+        is_open: job.isOpen
+    };
+
+    if (job.id) {
+        return await supabase
+            .from('jobs')
+            .update(jobData)
+            .eq('id', job.id);
+    } else {
+        return await supabase
+            .from('jobs')
+            .insert(jobData);
     }
 };
 
-export const saveJobs = (jobs: Job[]) => {
-    localStorage.setItem(JOBS_KEY, JSON.stringify(jobs));
-    window.dispatchEvent(new Event('jobsUpdated'));
-};
-
-export const addJob = (job: Job) => {
-    const jobs = getJobs();
-    const updatedJobs = [job, ...jobs];
-    saveJobs(updatedJobs);
-    return updatedJobs;
-};
-
-export const updateJob = (id: string, updates: Partial<Job>) => {
-    const jobs = getJobs();
-    const updatedJobs = jobs.map(job =>
-        job.id === id ? { ...job, ...updates } : job
-    );
-    saveJobs(updatedJobs);
-    return updatedJobs;
-};
-
-export const deleteJob = (id: string) => {
-    const jobs = getJobs();
-    const updatedJobs = jobs.filter(job => job.id !== id);
-    saveJobs(updatedJobs);
-    return updatedJobs;
+export const deleteJob = async (id: string) => {
+    return await supabase
+        .from('jobs')
+        .delete()
+        .eq('id', id);
 };

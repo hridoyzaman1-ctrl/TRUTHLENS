@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { categories, authors } from '@/data/mockData'; // Keep categories/authors static for now
-import { getArticles, saveArticles } from '@/lib/articleService';
+import { getArticles, saveArticle, deleteArticle } from '@/lib/articleService';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -47,20 +47,25 @@ const AdminArticles = () => {
   const [articlesList, setArticlesList] = useState<ExtendedArticle[]>([]);
 
   useEffect(() => {
-    const loadedArticles = getArticles();
-    setArticlesList(loadedArticles.map(a => ({
-      ...a,
-      status: (a.status as ArticleStatus) || 'published', // ensure status exists
-      submittedBy: a.author.id // fallback
-    })));
+    const fetchArticles = async () => {
+      const loadedArticles = await getArticles();
+      setArticlesList(loadedArticles.map(a => ({
+        ...a,
+        status: (a.status as ArticleStatus) || 'published',
+        submittedBy: a.author.id
+      })));
+    };
+    fetchArticles();
   }, []);
 
-  // Save changes whenever list updates
-  const updateArticlesList = (newList: ExtendedArticle[]) => {
-    setArticlesList(newList);
-    // Convert ExtendedArticle back to Article for storage
-    // We treat 'status' as string in the base type, so it fits
-    saveArticles(newList as unknown as Article[]);
+  // Helper to refresh list
+  const refreshArticles = async () => {
+    const loadedArticles = await getArticles();
+    setArticlesList(loadedArticles.map(a => ({
+      ...a,
+      status: (a.status as ArticleStatus) || 'published',
+      submittedBy: a.author.id
+    })));
   };
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -194,152 +199,106 @@ const AdminArticles = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const author = authors.find(a => a.id === formData.authorId) || authors[0];
     const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(Boolean);
 
-    let updatedList = [...articlesList];
-
-    if (editingArticle) {
-      // Update existing article
-      updatedList = updatedList.map(a =>
-        a.id === editingArticle.id
-          ? {
-            ...a,
-            title: formData.title,
-            slug: formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-            excerpt: formData.excerpt,
-            content: formData.content,
-            category: formData.category,
-            author,
-            featuredImage: formData.featuredImage,
-            videoUrl: formData.videoUrl || undefined,
-            hasVideo: !!formData.videoUrl,
-            tags: tagsArray,
-            isBreaking: canSetBreaking ? formData.isBreaking : a.isBreaking,
-            isFeatured: canSetFeatured ? formData.isFeatured : a.isFeatured,
-            status: formData.status,
-            updatedAt: new Date()
-          }
-          : a
-      );
-
-      logActivity('update', 'article', {
-        resourceId: editingArticle.id,
-        resourceName: formData.title,
-        details: 'Updated article content'
-      });
-      toast.success('Article updated successfully!');
-    } else {
-      // Create new article
-      const newArticle: ExtendedArticle = {
-        id: Date.now().toString(),
+    try {
+      const articleData: Partial<Article> = {
         title: formData.title,
         slug: formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
         excerpt: formData.excerpt,
         content: formData.content,
         category: formData.category,
-        author,
         featuredImage: formData.featuredImage || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1200',
-        videoUrl: formData.videoUrl || undefined,
-        hasVideo: !!formData.videoUrl,
-        tags: tagsArray,
+        tags: tagsArray, // Note: service might not support tags yet, but we pass it
         isBreaking: canSetBreaking ? formData.isBreaking : false,
         isFeatured: canSetFeatured ? formData.isFeatured : false,
         status: formData.status,
-        publishedAt: formData.status === 'published' ? new Date() : new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        views: 0,
-        submittedBy: currentUser?.id
       };
 
-      updatedList = [newArticle, ...updatedList];
-
-      logActivity('create', 'article', {
-        resourceId: newArticle.id,
-        resourceName: formData.title,
-        details: `Created new article in ${formData.category} category`
-      });
-      toast.success('Article created successfully!');
+      if (editingArticle) {
+        articleData.id = editingArticle.id;
+        await saveArticle(articleData);
+        logActivity('update', 'article', {
+          resourceId: editingArticle.id,
+          resourceName: formData.title,
+          details: 'Updated article content'
+        });
+        toast.success('Article updated successfully!');
+      } else {
+        await saveArticle(articleData);
+        logActivity('create', 'article', {
+          resourceId: 'new', // ID handled by DB
+          resourceName: formData.title,
+          details: `Created new article in ${formData.category} category`
+        });
+        toast.success('Article created successfully!');
+      }
+      await refreshArticles();
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to save article', error);
+      toast.error('Failed to save article');
     }
-
-    updateArticlesList(updatedList);
-    setIsDialogOpen(false);
   };
 
-  const handleSubmitForReview = (article: ExtendedArticle) => {
-    const updatedList = articlesList.map(a =>
-      a.id === article.id
-        ? { ...a, status: 'pending_review' as ArticleStatus, updatedAt: new Date() }
-        : a
-    );
-    updateArticlesList(updatedList);
-
-    logActivity('submit_review', 'article', {
-      resourceId: article.id,
-      resourceName: article.title,
-      details: 'Submitted article for editorial review'
-    });
-    toast.success('Article submitted for review!');
+  const handleSubmitForReview = async (article: ExtendedArticle) => {
+    try {
+      await saveArticle({ ...article, status: 'pending_review' });
+      await refreshArticles();
+      logActivity('submit_review', 'article', {
+        resourceId: article.id,
+        resourceName: article.title,
+        details: 'Submitted article for editorial review'
+      });
+      toast.success('Article submitted for review!');
+    } catch (error) {
+      toast.error('Failed to submit for review');
+    }
   };
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!reviewingArticle) return;
-
-    const updatedList = articlesList.map(a =>
-      a.id === reviewingArticle.id
-        ? {
-          ...a,
-          status: 'published' as ArticleStatus,
-          publishedAt: new Date(),
-          reviewedBy: currentUser?.id,
-          reviewNote: reviewNote || undefined,
-          updatedAt: new Date()
-        }
-        : a
-    );
-    updateArticlesList(updatedList);
-
-    logActivity('approve', 'article', {
-      resourceId: reviewingArticle.id,
-      resourceName: reviewingArticle.title,
-      details: reviewNote ? `Approved with note: ${reviewNote}` : 'Approved and published'
-    });
-    setIsReviewDialogOpen(false);
-    toast.success('Article approved and published!');
+    try {
+      await saveArticle({ ...reviewingArticle, status: 'published' });
+      // Note: we'd also save the review note if the schema supported it directly or via separate table
+      await refreshArticles();
+      logActivity('approve', 'article', {
+        resourceId: reviewingArticle.id,
+        resourceName: reviewingArticle.title,
+        details: reviewNote ? `Approved with note: ${reviewNote}` : 'Approved and published'
+      });
+      setIsReviewDialogOpen(false);
+      toast.success('Article approved and published!');
+    } catch (error) {
+      toast.error('Failed to approve article');
+    }
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!reviewingArticle || !reviewNote.trim()) {
       toast.error('Please provide a reason for rejection');
       return;
     }
-
-    const updatedList = articlesList.map(a =>
-      a.id === reviewingArticle.id
-        ? {
-          ...a,
-          status: 'rejected' as ArticleStatus,
-          reviewedBy: currentUser?.id,
-          reviewNote: reviewNote,
-          updatedAt: new Date()
-        }
-        : a
-    );
-    updateArticlesList(updatedList);
-
-    logActivity('reject', 'article', {
-      resourceId: reviewingArticle.id,
-      resourceName: reviewingArticle.title,
-      details: `Rejected: ${reviewNote}`
-    });
-    setIsReviewDialogOpen(false);
-    toast.success('Article rejected');
+    try {
+      await saveArticle({ ...reviewingArticle, status: 'rejected' });
+      // Note: we'd also save the review note if the schema supported it directly or via separate table
+      await refreshArticles();
+      logActivity('reject', 'article', {
+        resourceId: reviewingArticle.id,
+        resourceName: reviewingArticle.title,
+        details: `Rejected: ${reviewNote}`
+      });
+      setIsReviewDialogOpen(false);
+      toast.success('Article rejected');
+    } catch (error) {
+      toast.error('Failed to reject article');
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const article = articlesList.find(a => a.id === id);
     if (!article) return;
 
@@ -350,15 +309,18 @@ const AdminArticles = () => {
     }
 
     if (window.confirm('Are you sure you want to delete this article?')) {
-      const updatedList = articlesList.filter(a => a.id !== id);
-      updateArticlesList(updatedList);
-
-      logActivity('delete', 'article', {
-        resourceId: id,
-        resourceName: article.title,
-        details: 'Permanently deleted article'
-      });
-      toast.success('Article deleted successfully!');
+      try {
+        await deleteArticle(id);
+        await refreshArticles();
+        logActivity('delete', 'article', {
+          resourceId: id,
+          resourceName: article.title,
+          details: 'Permanently deleted article'
+        });
+        toast.success('Article deleted successfully!');
+      } catch (error) {
+        toast.error('Failed to delete article');
+      }
     }
   };
 

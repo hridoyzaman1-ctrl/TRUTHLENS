@@ -11,6 +11,7 @@ export interface Comment {
   id: string;
   author: string;
   email?: string;
+  avatar?: string;
   content: string;
   articleId: string;
   createdAt: Date;
@@ -94,37 +95,7 @@ export const CommentSection = ({ articleId }: CommentSectionProps) => {
 
   // Real-time subscription setup - ready for Cloud integration
   useEffect(() => {
-    // TODO: Enable real-time updates when connected to Cloud
-    // Example with Supabase Realtime:
-    // const channel = supabase
-    //   .channel('comments-changes')
-    //   .on(
-    //     'postgres_changes',
-    //     {
-    //       event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-    //       schema: 'public',
-    //       table: 'comments',
-    //       filter: `article_id=eq.${articleId}`
-    //     },
-    //     (payload) => {
-    //       console.log('Comment change:', payload);
-    //       if (payload.eventType === 'INSERT' && payload.new.status === 'approved') {
-    //         setComments(prev => [payload.new as Comment, ...prev]);
-    //         toast.info('New comment posted!');
-    //       } else if (payload.eventType === 'DELETE') {
-    //         setComments(prev => prev.filter(c => c.id !== payload.old.id));
-    //       } else if (payload.eventType === 'UPDATE') {
-    //         setComments(prev => prev.map(c => 
-    //           c.id === payload.new.id ? payload.new as Comment : c
-    //         ));
-    //       }
-    //     }
-    //   )
-    //   .subscribe();
-    //
-    // return () => {
-    //   supabase.removeChannel(channel);
-    // };
+    // Keep TODOs or replace with real subscription if needed
   }, [articleId]);
 
   const handleSubmitComment = async (e: React.FormEvent) => {
@@ -209,11 +180,6 @@ export const CommentSection = ({ articleId }: CommentSectionProps) => {
   };
 
   const handleLike = async (commentId: string, isReply: boolean = false, parentId?: string) => {
-    // TODO: Replace with actual database update when connected to Cloud
-    // Example with Supabase:
-    // const { error } = await supabase.rpc('increment_likes', { comment_id: commentId });
-    // if (error) throw error;
-
     setComments(comments.map(comment => {
       if (isReply && parentId && comment.id === parentId) {
         return {
@@ -233,8 +199,12 @@ export const CommentSection = ({ articleId }: CommentSectionProps) => {
   const CommentItem = ({ comment, isReply = false, parentId }: { comment: Comment; isReply?: boolean; parentId?: string }) => (
     <div className={`${isReply ? 'ml-8 mt-4' : ''}`}>
       <div className="flex gap-3">
-        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-          <User className="h-5 w-5 text-muted-foreground" />
+        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+          {comment.avatar ? (
+            <img src={comment.avatar} alt={comment.author} className="h-full w-full object-cover" />
+          ) : (
+            <User className="h-5 w-5 text-muted-foreground" />
+          )}
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">

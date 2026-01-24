@@ -1,39 +1,59 @@
+import { supabase } from './supabaseClient';
 import { TeamMember } from '@/types/team';
-import { initialTeamMembers } from '@/data/teamData';
 
-const STORAGE_KEY = 'truthlens_team_members';
+export const getTeamMembers = async (): Promise<TeamMember[]> => {
+    const { data, error } = await supabase
+        .from('team_members')
+        .select('*')
+        .order('display_order', { ascending: true });
 
-export const getTeamMembers = (): TeamMember[] => {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) return initialTeamMembers;
-    try {
-        return JSON.parse(data);
-    } catch (error) {
-        console.error('Error parsing team members', error);
-        return initialTeamMembers;
+    if (error) {
+        console.error('Error fetching team members:', error);
+        return [];
+    }
+
+    return data.map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        role: m.role,
+        bio: m.bio,
+        image: m.avatar_url,
+        // Assuming TeamMember type expects separate fields or social object
+        // Based on types/team.ts viewer content:
+        // id, name, role, image, bio, email, twitter, linkedin, order
+        email: m.email,
+        twitter: m.twitter_url,
+        linkedin: m.linkedin_url,
+        order: m.display_order
+    }));
+};
+
+export const saveTeamMembers = async (members: TeamMember[]) => {
+    console.warn('saveTeamMembers bulk not fully optimized, saving individually');
+    for (const m of members) {
+        await upsertTeamMember(m);
     }
 };
 
-export const saveTeamMembers = (members: TeamMember[]) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(members));
-    window.dispatchEvent(new Event('teamMembersUpdated'));
+export const upsertTeamMember = async (member: Partial<TeamMember>) => {
+    const payload = {
+        name: member.name,
+        role: member.role,
+        bio: member.bio,
+        avatar_url: member.image,
+        twitter_url: member.twitter,
+        linkedin_url: member.linkedin,
+        email: member.email,
+        display_order: member.order || 0
+    };
+
+    if (member.id && !member.id.startsWith('temp')) {
+        await supabase.from('team_members').update(payload).eq('id', member.id);
+    } else {
+        await supabase.from('team_members').insert(payload);
+    }
 };
 
-export const addTeamMember = (member: Omit<TeamMember, 'id'>) => {
-    const members = getTeamMembers();
-    const newMember = { ...member, id: Date.now().toString() };
-    saveTeamMembers([...members, newMember]);
-    return newMember;
-};
-
-export const updateTeamMember = (member: TeamMember) => {
-    const members = getTeamMembers();
-    const updated = members.map(m => m.id === member.id ? member : m);
-    saveTeamMembers(updated);
-};
-
-export const deleteTeamMember = (id: string) => {
-    const members = getTeamMembers();
-    const filtered = members.filter(m => m.id !== id);
-    saveTeamMembers(filtered);
+export const deleteTeamMember = async (id: string) => {
+    await supabase.from('team_members').delete().eq('id', id);
 };

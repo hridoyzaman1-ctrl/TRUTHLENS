@@ -1,18 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { AdminRole, AdminUser, RolePermissions, ROLE_PERMISSIONS, hasPermission } from '@/types/admin';
-import { userService, ExtendedAdminUser } from '@/lib/userService';
+import { RolePermissions, ROLE_PERMISSIONS, hasPermission } from '@/types/admin';
+import { userService, AdminUser } from '@/lib/userService';
 
-// Export ExtendedAdminUser as AdminUser for compatibility where needed, or just extend the type
-export type { ExtendedAdminUser };
+// Export for compatibility
+export type { AdminUser as ExtendedAdminUser };
 
 interface AdminAuthContextType {
-  currentUser: ExtendedAdminUser | null;
+  currentUser: AdminUser | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string, rememberMe?: boolean) => boolean;
-  logout: () => void;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>;
+  logout: () => Promise<void>;
   hasPermission: (permission: keyof RolePermissions) => boolean;
   canAccessPath: (path: string) => boolean;
-  updateCurrentUser: (user: ExtendedAdminUser) => void;
+  updateCurrentUser: (user: AdminUser) => Promise<void>;
+  isLoading: boolean;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
@@ -32,55 +33,59 @@ const PATH_PERMISSIONS: Record<string, keyof RolePermissions | 'always'> = {
   '/admin/users': 'manageUsers',
   '/admin/jobs': 'manageJobs',
   '/admin/settings': 'manageSettings',
-  '/admin/profile': 'always', // Allow profile access
+  '/admin/profile': 'always',
 };
 
 export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<ExtendedAdminUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load user from storage on mount
+  // Initialize auth state
   useEffect(() => {
-    // userService.init() is called in the module, so users should be ready
-    const storedUser = localStorage.getItem('adminUser') || sessionStorage.getItem('adminUser');
-    if (storedUser) {
+    const initAuth = async () => {
       try {
-        const parsed = JSON.parse(storedUser);
-        parsed.createdAt = new Date(parsed.createdAt);
-        // Refresh from "DB" to get latest updates if they changed in another session
-        // But for local single-user this is fine. Ideally we fetch fresh from userService
-        const freshUser = userService.authenticate(parsed.email, 'admin123'); // Hack: we don't have password here. 
-        // Better: just use storedUser, but if we want to reflect updates from other tabs we'd need event listeners.
-        // For simplicity, rely on storedUser but re-save on updates.
-        setCurrentUser(parsed);
-      } catch {
-        localStorage.removeItem('adminUser');
-        sessionStorage.removeItem('adminUser');
+        const session = await userService.getSession();
+        if (session) {
+          const user = await userService.getCurrentUser();
+          if (user) {
+            setCurrentUser(user);
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
+        setIsLoading(false);
       }
+    };
+
+    initAuth();
+  }, []);
+
+  const login = useCallback(async (email: string, password: string, rememberMe = false): Promise<boolean> => {
+    try {
+      const { user } = await userService.login(email, password);
+      if (user) {
+        // Fetch full profile including role
+        const profile = await userService.getCurrentUser();
+        if (profile) {
+          setCurrentUser(profile);
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
     }
   }, []);
 
-  const login = useCallback((email: string, password: string, rememberMe = false): boolean => {
-    const user = userService.authenticate(email, password);
-
-    if (user) {
-      setCurrentUser(user);
-
-      const storage = rememberMe ? localStorage : sessionStorage;
-      storage.setItem('adminUser', JSON.stringify(user));
-      storage.setItem('adminAuth', JSON.stringify({ isAuthenticated: true, timestamp: Date.now() }));
-
-      return true;
+  const logout = useCallback(async () => {
+    try {
+      await userService.logout();
+      setCurrentUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
     }
-
-    return false;
-  }, []);
-
-  const logout = useCallback(() => {
-    setCurrentUser(null);
-    localStorage.removeItem('adminUser');
-    sessionStorage.removeItem('adminUser');
-    localStorage.removeItem('adminAuth');
-    sessionStorage.removeItem('adminAuth');
   }, []);
 
   const checkPermission = useCallback((permission: keyof RolePermissions): boolean => {
@@ -98,14 +103,14 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return hasPermission(currentUser.role, permission);
   }, [currentUser]);
 
-  const updateCurrentUser = useCallback((user: ExtendedAdminUser) => {
-    // Persist to DB
-    userService.updateProfile(user.id, user);
-    // Update State
-    setCurrentUser(user);
-    // Update Session
-    const storage = localStorage.getItem('adminUser') ? localStorage : sessionStorage;
-    storage.setItem('adminUser', JSON.stringify(user));
+  const updateCurrentUser = useCallback(async (user: AdminUser) => {
+    try {
+      await userService.updateProfile(user.id, user);
+      setCurrentUser(user);
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      throw error;
+    }
   }, []);
 
   return (
@@ -118,6 +123,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         hasPermission: checkPermission,
         canAccessPath,
         updateCurrentUser,
+        isLoading
       }}
     >
       {children}
@@ -131,17 +137,4 @@ export const useAdminAuth = (): AdminAuthContextType => {
     throw new Error('useAdminAuth must be used within AdminAuthProvider');
   }
   return context;
-};
-
-// Export for backward compatibility with AdminLogin
-export const isAdminAuthenticated = (): boolean => {
-  const storedUser = localStorage.getItem('adminUser') || sessionStorage.getItem('adminUser');
-  return !!storedUser;
-};
-
-export const adminLogout = (): void => {
-  localStorage.removeItem('adminUser');
-  sessionStorage.removeItem('adminUser');
-  localStorage.removeItem('adminAuth');
-  sessionStorage.removeItem('adminAuth');
 };

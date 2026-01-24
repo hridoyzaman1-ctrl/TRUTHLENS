@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getTeamMembers, saveTeamMembers, addTeamMember, updateTeamMember, deleteTeamMember } from '@/lib/teamService';
+import { getTeamMembers, saveTeamMembers, upsertTeamMember, deleteTeamMember } from '@/lib/teamService';
 import { TeamMember } from '@/types/team';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,8 +68,9 @@ const AdminTeam = () => {
         return () => window.removeEventListener('teamMembersUpdated', loadMembers);
     }, []);
 
-    const loadMembers = () => {
-        setMembers(getTeamMembers().sort((a, b) => a.order - b.order));
+    const loadMembers = async () => {
+        const data = await getTeamMembers();
+        setMembers(data.sort((a, b) => a.order - b.order));
     };
 
     const sortable = useTouchSortable({
@@ -104,26 +105,32 @@ const AdminTeam = () => {
         setIsDialogOpen(true);
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.name || !formData.role) return;
 
-        if (editingMember) {
-            updateTeamMember({ ...editingMember, ...formData } as TeamMember);
-            toast.success('Team member updated');
-        } else {
-            addTeamMember({
-                ...formData as any,
-                order: members.length + 1
-            });
-            toast.success('Team member added');
+        try {
+            if (editingMember) {
+                await upsertTeamMember({ ...editingMember, ...formData } as TeamMember);
+                toast.success('Team member updated');
+            } else {
+                await upsertTeamMember({
+                    ...formData as any,
+                    order: members.length + 1
+                });
+                toast.success('Team member added');
+            }
+            loadMembers();
+            setIsDialogOpen(false);
+        } catch (error) {
+            toast.error('Failed to save team member');
         }
-        setIsDialogOpen(false);
     };
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
         if (confirm('Delete this team member?')) {
-            deleteTeamMember(id);
+            await deleteTeamMember(id);
+            loadMembers();
             toast.success('Team member deleted');
         }
     };

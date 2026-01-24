@@ -19,23 +19,30 @@ const AdminInternships = () => {
     const [selectedApp, setSelectedApp] = useState<InternshipApplication | null>(null);
 
     useEffect(() => {
-        const loadData = () => {
-            setApplications(getApplications());
+        const loadData = async () => {
+            const data = await getApplications();
+            setApplications(data);
         };
         loadData();
         window.addEventListener('internshipApplicationsUpdated', loadData);
         return () => window.removeEventListener('internshipApplicationsUpdated', loadData);
     }, []);
 
-    const handleStatusUpdate = (id: string, status: InternshipApplication['status']) => {
-        updateApplicationStatus(id, status);
+    const handleStatusUpdate = async (id: string, status: InternshipApplication['status']) => {
+        await updateApplicationStatus(id, status);
         if (selectedApp) setSelectedApp({ ...selectedApp, status });
+        // Refresh list
+        const data = await getApplications();
+        setApplications(data);
         toast.success(`Application status marked as ${status}`);
     };
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
         if (confirm('Are you sure you want to delete this application?')) {
-            deleteApplication(id);
+            await deleteApplication(id);
+            // Refresh list
+            const data = await getApplications();
+            setApplications(data);
             setSelectedApp(null);
             toast.success('Application deleted');
         }

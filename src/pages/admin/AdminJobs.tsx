@@ -36,7 +36,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useTouchSortable } from '@/hooks/useTouchSortable';
 import { cn } from '@/lib/utils';
-import { getJobs, saveJobs } from '@/lib/jobService';
+import { getJobs, saveJob, deleteJob } from '@/lib/jobService';
 
 // Draggable Job Card Component
 const DraggableJobCard = ({ job, onToggleStatus, onEdit, onDelete }: {
@@ -153,7 +153,11 @@ const AdminJobs = () => {
 
   // Load jobs on mount
   useEffect(() => {
-    setJobsList(getJobs());
+    const fetchJobs = async () => {
+      const jobs = await getJobs();
+      setJobsList(jobs);
+    };
+    fetchJobs();
   }, []);
 
   const openCreateDialog = () => {
@@ -222,7 +226,13 @@ const AdminJobs = () => {
     }
 
     setJobsList(updatedList);
-    saveJobs(updatedList);
+    // saveJob handles one at a time. For this bulk update (reorder or single edit) we should optimize or loop.
+    // Since this is a single edit/create, we can just save the specific job.
+    if (editingJob) {
+      saveJob(updatedList.find(j => j.id === editingJob.id)!);
+    } else {
+      saveJob(updatedList[0]);
+    }
     setIsDialogOpen(false);
   };
 
@@ -230,7 +240,7 @@ const AdminJobs = () => {
     if (window.confirm('Are you sure you want to delete this job?')) {
       const updatedList = jobsList.filter(job => job.id !== id);
       setJobsList(updatedList);
-      saveJobs(updatedList);
+      deleteJob(id);
       toast.success('Job deleted successfully!');
     }
   };
@@ -240,7 +250,8 @@ const AdminJobs = () => {
       job.id === id ? { ...job, isOpen: !job.isOpen } : job
     );
     setJobsList(updatedList);
-    saveJobs(updatedList);
+    const job = updatedList.find(j => j.id === id);
+    if (job) saveJob(job);
     toast.success('Job status updated!');
   };
 
@@ -250,7 +261,8 @@ const AdminJobs = () => {
     getItemId: (job) => job.id,
     onReorder: (newJobs) => {
       setJobsList(newJobs);
-      saveJobs(newJobs);
+      // Reordering not supported by backend yet, essentially a no-op for persistence
+      // unless we add a 'order' field to Job and save all.
       toast.success('Job order updated');
     },
   });

@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { useAdminAuth, isAdminAuthenticated } from '@/context/AdminAuthContext';
+import { useAdminAuth } from '@/context/AdminAuthContext';
 import { ROLE_DISPLAY, RolePermissions } from '@/types/admin';
 import logo from '@/assets/truthlens-logo.png';
 import { toast } from 'sonner';
@@ -52,7 +52,7 @@ const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser, logout, hasPermission, canAccessPath } = useAdminAuth();
+  const { currentUser, logout, hasPermission, canAccessPath, isAuthenticated } = useAdminAuth();
 
   // Filter nav items based on user permissions
   const navItems = allNavItems.filter(item => {
@@ -62,7 +62,7 @@ const AdminLayout = () => {
 
   // Check authentication on mount and route changes
   useEffect(() => {
-    if (!isAdminAuthenticated()) {
+    if (!isAuthenticated) {
       navigate('/admin/login', { state: { from: location.pathname }, replace: true });
       return;
     }
@@ -88,7 +88,7 @@ const AdminLayout = () => {
   };
 
   // Don't render layout if not authenticated
-  if (!isAdminAuthenticated() || !currentUser) {
+  if (!isAuthenticated || !currentUser) {
     return null;
   }
 

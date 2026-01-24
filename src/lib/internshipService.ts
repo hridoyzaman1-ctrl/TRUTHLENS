@@ -1,3 +1,4 @@
+import { supabase } from './supabaseClient';
 
 export interface InternshipApplication {
     id: string;
@@ -8,57 +9,65 @@ export interface InternshipApplication {
     department: string;
     portfolio: string;
     coverLetter: string;
-    cvFileName: string; // Storing just the name for mocking
+    cvFileName: string;
     submittedAt: Date;
     status: 'pending' | 'reviewed' | 'accepted' | 'rejected';
 }
 
-const STORAGE_KEY = 'truthlens_internship_applications';
+export const getApplications = async (): Promise<InternshipApplication[]> => {
+    const { data, error } = await supabase
+        .from('internship_applications')
+        .select('*')
+        .order('submitted_at', { ascending: false });
 
-export const getApplications = (): InternshipApplication[] => {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) return [];
-    try {
-        const parsed = JSON.parse(data);
-        return parsed.map((app: any) => ({
-            ...app,
-            submittedAt: new Date(app.submittedAt)
-        }));
-    } catch (error) {
-        console.error('Error parsing internship applications', error);
-        return [];
-    }
+    if (error) return [];
+
+    return data.map((a: any) => ({
+        id: a.id,
+        fullName: a.full_name,
+        email: a.email,
+        phone: a.phone,
+        university: a.university,
+        department: a.department,
+        portfolio: a.portfolio_url,
+        coverLetter: a.cover_letter,
+        cvFileName: a.cv_url, // URL now
+        submittedAt: new Date(a.submitted_at),
+        status: a.status
+    }));
 };
 
-export const saveApplication = (application: Omit<InternshipApplication, 'id' | 'submittedAt' | 'status'>): InternshipApplication => {
-    const applications = getApplications();
-    const newApplication: InternshipApplication = {
-        ...application,
-        id: Date.now().toString(),
-        submittedAt: new Date(),
-        status: 'pending'
-    };
+export const saveApplication = async (application: Omit<InternshipApplication, 'id' | 'submittedAt' | 'status'>) => {
+    const { data, error } = await supabase
+        .from('internship_applications')
+        .insert({
+            full_name: application.fullName,
+            email: application.email,
+            phone: application.phone,
+            university: application.university,
+            department: application.department,
+            portfolio_url: application.portfolio,
+            cover_letter: application.coverLetter,
+            cv_url: application.cvFileName,
+            status: 'pending'
+        })
+        .select()
+        .single();
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([newApplication, ...applications]));
-
-    // Trigger an event so other tabs/components can update
-    window.dispatchEvent(new Event('internshipApplicationsUpdated'));
-
-    return newApplication;
+    if (error) throw error;
+    return data;
 };
 
-export const updateApplicationStatus = (id: string, status: InternshipApplication['status']) => {
-    const applications = getApplications();
-    const updated = applications.map(app =>
-        app.id === id ? { ...app, status } : app
-    );
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    window.dispatchEvent(new Event('internshipApplicationsUpdated'));
+export const updateApplicationStatus = async (id: string, status: string) => {
+    await supabase
+        .from('internship_applications')
+        .update({ status })
+        .eq('id', id);
 };
 
-export const deleteApplication = (id: string) => {
-    const applications = getApplications();
-    const filtered = applications.filter(app => app.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-    window.dispatchEvent(new Event('internshipApplicationsUpdated'));
+export const deleteApplication = async (id: string) => {
+    await supabase
+        .from('internship_applications')
+        .delete()
+        .eq('id', id);
 };

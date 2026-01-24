@@ -82,8 +82,8 @@ const AdminComments = () => {
   const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
 
-  const loadComments = useCallback(() => {
-    const allComments = getAllComments() as Comment[];
+  const loadComments = useCallback(async () => {
+    const allComments = await getAllComments() as Comment[];
     setComments(allComments);
   }, []);
 
@@ -135,10 +135,10 @@ const AdminComments = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleDelete = (commentId: string) => {
+  const handleDelete = async (commentId: string) => {
     const comment = comments.find(c => c.id === commentId);
     if (comment) {
-      deleteCommentService(comment.articleId, commentId);
+      await deleteCommentService(commentId);
       loadComments();
       logActivity('delete', 'comment', {
         resourceId: commentId,
@@ -149,9 +149,11 @@ const AdminComments = () => {
     }
   };
 
-  const handleBulkDelete = (status: string) => {
+  const handleBulkDelete = async (status: string) => {
     const toDelete = comments.filter(c => c.status === status);
-    toDelete.forEach(c => deleteCommentService(c.articleId, c.id));
+    for (const c of toDelete) {
+      await deleteCommentService(c.id);
+    }
     loadComments();
     logActivity('bulk_delete', 'comment', {
       details: `Bulk deleted ${toDelete.length} ${status} comments`
@@ -159,10 +161,10 @@ const AdminComments = () => {
     toast.success(`${toDelete.length} ${status} comments deleted`);
   };
 
-  const handleApprove = (commentId: string) => {
+  const handleApprove = async (commentId: string) => {
     const comment = comments.find(c => c.id === commentId);
     if (comment) {
-      updateCommentStatus(comment.articleId, commentId, 'approved');
+      await updateCommentStatus(commentId, 'approved');
       loadComments();
       logActivity('approve', 'comment', {
         resourceId: commentId,
@@ -173,10 +175,10 @@ const AdminComments = () => {
     }
   };
 
-  const handleFlag = (commentId: string) => {
+  const handleFlag = async (commentId: string) => {
     const comment = comments.find(c => c.id === commentId);
     if (comment) {
-      updateCommentStatus(comment.articleId, commentId, 'flagged');
+      await updateCommentStatus(commentId, 'flagged');
       loadComments();
       logActivity('flag', 'comment', {
         resourceId: commentId,
@@ -187,10 +189,10 @@ const AdminComments = () => {
     }
   };
 
-  const handleMarkSpam = (commentId: string) => {
+  const handleMarkSpam = async (commentId: string) => {
     const comment = comments.find(c => c.id === commentId);
     if (comment) {
-      updateCommentStatus(comment.articleId, commentId, 'spam');
+      await updateCommentStatus(commentId, 'spam');
       loadComments();
       logActivity('flag', 'comment', {
         resourceId: commentId,

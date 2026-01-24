@@ -1,5 +1,5 @@
 // Admin Role Types
-export type AdminRole = 'admin' | 'editor' | 'author' | 'journalist';
+export type AdminRole = 'admin' | 'editor' | 'author' | 'journalist' | 'reporter';
 
 export interface AdminUser {
   id: string;
@@ -16,7 +16,7 @@ export interface RolePermissions {
   // Dashboard
   viewFullDashboard: boolean;
   viewOwnStats: boolean;
-  
+
   // Articles
   createArticles: boolean;
   editOwnArticles: boolean;
@@ -27,37 +27,37 @@ export interface RolePermissions {
   reviewArticles: boolean;  // Can approve/reject pending articles
   setBreakingNews: boolean;
   setFeatured: boolean;
-  
+
   // Featured & Sections (homepage management)
   manageFeatured: boolean;
   manageSections: boolean;
-  
+
   // Editorial
   manageEditorial: boolean;
-  
+
   // Header Menu
   manageMenu: boolean;
-  
+
   // Comments
   viewAllComments: boolean;
   moderateComments: boolean;
-  
+
   // Contact Info & Site Settings
   manageContactInfo: boolean;
   manageSettings: boolean;
-  
+
   // Categories
   manageCategories: boolean;
-  
+
   // Media
   uploadMedia: boolean;
   viewAllMedia: boolean;
   deleteOwnMedia: boolean;
   deleteAllMedia: boolean;
-  
+
   // Users
   manageUsers: boolean;
-  
+
   // Jobs
   manageJobs: boolean;
 }
@@ -176,6 +176,34 @@ export const ROLE_PERMISSIONS: Record<AdminRole, RolePermissions> = {
     manageUsers: false,
     manageJobs: false,
   },
+  reporter: {
+    viewFullDashboard: false,
+    viewOwnStats: true,
+    createArticles: true,
+    editOwnArticles: true,
+    editAllArticles: false,
+    deleteOwnArticles: true,
+    deleteAllArticles: false,
+    publishArticles: false,
+    reviewArticles: false,
+    setBreakingNews: false,
+    setFeatured: false,
+    manageFeatured: false,
+    manageSections: false,
+    manageEditorial: false,
+    manageMenu: false,
+    viewAllComments: false,
+    moderateComments: false,
+    manageContactInfo: false,
+    manageSettings: false,
+    manageCategories: false,
+    uploadMedia: true,
+    viewAllMedia: false,
+    deleteOwnMedia: true,
+    deleteAllMedia: false,
+    manageUsers: false,
+    manageJobs: false,
+  },
 };
 
 // Navigation item configuration with required permissions
@@ -198,4 +226,5 @@ export const ROLE_DISPLAY: Record<AdminRole, { label: string; color: string }> =
   editor: { label: 'Editor', color: 'bg-blue-500' },
   author: { label: 'Author', color: 'bg-green-500' },
   journalist: { label: 'Journalist', color: 'bg-purple-500' },
+  reporter: { label: 'Reporter', color: 'bg-yellow-500' },
 };

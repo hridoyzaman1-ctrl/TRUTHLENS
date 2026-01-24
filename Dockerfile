@@ -1,22 +1,31 @@
-FROM node:20-slim
+# Build Stage
+FROM node:20-alpine AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
+RUN npm ci
 
-# Install dependencies
-RUN npm install
-
-# Copy source code
 COPY . .
 
-# Build the application
 RUN npm run build
 
-# Expose the port the app runs on
+# Production Stage
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+# Only install production dependencies if server.js needs them (express)
+RUN npm install --production
+
+# Copy built assets and server script
+COPY --from=builder /app/dist ./dist
+COPY server.js .
+
+# Expose port
 EXPOSE 8080
 
-# Start the application
-CMD ["npm", "start"]
+# Environment variables should be passed at runtime using --env-file or platform config
+# CMD ["node", "server.js"]
+CMD ["node", "server.js"]
