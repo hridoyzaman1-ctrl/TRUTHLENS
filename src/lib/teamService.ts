@@ -52,8 +52,10 @@ export const upsertTeamMember = async (member: Partial<TeamMember>) => {
     } else {
         await supabase.from('team_members').insert(payload);
     }
+    window.dispatchEvent(new Event('teamMembersUpdated'));
 };
 
 export const deleteTeamMember = async (id: string) => {
     await supabase.from('team_members').delete().eq('id', id);
+    window.dispatchEvent(new Event('teamMembersUpdated'));
 };

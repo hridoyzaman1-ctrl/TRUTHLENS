@@ -69,5 +69,25 @@ export const userService = {
 
         if (error) throw error;
         return data;
+    },
+
+    // Get all authors (profiles)
+    getAllAuthors: async (): Promise<AdminUser[]> => {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*');
+
+        if (error || !data) return [];
+
+        return data.map(profile => ({
+            id: profile.id,
+            name: profile.full_name || 'Unknown User',
+            email: '', // email might not be accessible in public profiles depending on RLS
+            role: (profile.role as UserRole) || 'author',
+            avatar: profile.avatar_url || '',
+            isActive: true,
+            createdAt: new Date(profile.created_at || Date.now()),
+            permissions: []
+        }));
     }
 };

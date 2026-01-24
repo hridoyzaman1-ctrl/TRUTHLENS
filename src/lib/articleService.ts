@@ -8,12 +8,12 @@ export const getArticles = async (): Promise<Article[]> => {
             *,
             author:author_id (
                 id,
-                full_name,
+                name,
                 avatar_url,
                 role
             )
         `)
-        .order('created_at', { ascending: false });
+        .order('published_at', { ascending: false });
 
     if (error) {
         console.error('Error fetching articles:', error);
@@ -27,12 +27,14 @@ export const getArticles = async (): Promise<Article[]> => {
         excerpt: a.excerpt,
         content: a.content,
         category: a.category,
-        image: a.image_url, // map image_url to image or featuredImage depending on type definition
+        image: a.image_url,
         featuredImage: a.image_url,
+        videoUrl: a.video_url,
+        hasVideo: a.has_video,
         author: {
             id: a.author?.id,
-            name: a.author?.full_name || 'Unknown',
-            email: '', // Author email might not be public
+            name: a.author?.name || 'Unknown',
+            email: '',
             avatar: a.author?.avatar_url,
             bio: '',
             role: a.author?.role
@@ -43,7 +45,7 @@ export const getArticles = async (): Promise<Article[]> => {
         views: a.views || 0,
         isBreaking: a.is_breaking,
         isFeatured: a.is_featured,
-        tags: [], // Add tags support if needed
+        tags: [],
         status: a.published_at ? 'published' : 'draft'
     }));
 };
@@ -55,7 +57,7 @@ export const getArticleBySlug = async (slug: string): Promise<Article | undefine
             *,
             author:author_id (
                 id,
-                full_name,
+                name,
                 avatar_url,
                 role
             )
@@ -73,9 +75,11 @@ export const getArticleBySlug = async (slug: string): Promise<Article | undefine
         content: data.content,
         category: data.category,
         featuredImage: data.image_url,
+        videoUrl: data.video_url,
+        hasVideo: data.has_video,
         author: {
             id: data.author?.id,
-            name: data.author?.full_name || 'Unknown',
+            name: data.author?.name || 'Unknown',
             email: '',
             avatar: data.author?.avatar_url,
             bio: '',
@@ -99,6 +103,9 @@ export const incrementArticleViews = async (id: string) => {
 
 export const saveArticle = async (article: Partial<Article>) => {
     // This function needs to handle insert or update
+    // Get current user if author not specified
+    const { data: { user } } = await supabase.auth.getUser();
+
     const articleData = {
         title: article.title,
         slug: article.slug,
@@ -106,22 +113,29 @@ export const saveArticle = async (article: Partial<Article>) => {
         content: article.content,
         category: article.category,
         image_url: article.featuredImage,
+        video_url: article.videoUrl,
+        has_video: article.hasVideo,
         is_featured: article.isFeatured,
         is_breaking: article.isBreaking,
         published_at: article.status === 'published' ? new Date().toISOString() : null,
-        // author_id should be set from current session
+        author_id: article.author?.id || user?.id,
     };
 
+    let result;
     if (article.id) {
-        return await supabase
+        result = await supabase
             .from('articles')
             .update(articleData)
             .eq('id', article.id);
     } else {
-        return await supabase
+        result = await supabase
             .from('articles')
             .insert(articleData);
     }
+
+    // Dispatch event for UI updates
+    window.dispatchEvent(new Event('articlesUpdated'));
+    return result;
 };
 
 export const deleteArticle = async (id: string) => {
@@ -134,4 +148,5 @@ export const deleteArticle = async (id: string) => {
         console.error('Error deleting article:', error);
         throw error;
     }
+    window.dispatchEvent(new Event('articlesUpdated'));
 };

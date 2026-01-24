@@ -38,6 +38,7 @@ import AdminProfile from "./pages/admin/AdminProfile";
 import AdminInternships from "./pages/admin/AdminInternships";
 import TeamPage from "./pages/TeamPage";
 import AdminTeam from "./pages/admin/AdminTeam";
+import RestoreData from "./pages/admin/RestoreData";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,7 @@ const App = () => (
                   <Route path="settings" element={<AdminSettings />} />
                   <Route path="profile" element={<AdminProfile />} />
                   <Route path="activity" element={<AdminActivityLog />} />
+                  <Route path="restore" element={<RestoreData />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

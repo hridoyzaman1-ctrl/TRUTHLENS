@@ -10,16 +10,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import { getYoutubeThumbnail, FALLBACK_IMAGE } from '@/lib/videoUtils';
 
-import { getFeaturedSettings } from '@/lib/settingsService';
+import { getFeaturedSettings, defaultFeaturedSettings } from '@/lib/settingsService';
 
 export const HeroSection = () => {
   const [articlesList, setArticlesList] = useState<Article[]>([]);
-  const [settings, setSettings] = useState(getFeaturedSettings());
+  const [settings, setSettings] = useState(defaultFeaturedSettings);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchArticles = useCallback(() => {
-    setArticlesList(getArticles());
-    setSettings(getFeaturedSettings());
+  const fetchArticles = useCallback(async () => {
+    setArticlesList(await getArticles());
+    setSettings(await getFeaturedSettings());
   }, []);
 
   // Load data and listen for updates

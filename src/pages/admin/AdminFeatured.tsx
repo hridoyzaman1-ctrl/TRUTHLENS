@@ -8,8 +8,8 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getArticles } from '@/lib/articleService';
-import { Article } from '@/types/news';
-import { FeaturedSettings, getFeaturedSettings, saveFeaturedSettings } from '@/lib/settingsService';
+import { Article, FeaturedSettings } from '@/types/news';
+import { getFeaturedSettings, saveFeaturedSettings, defaultFeaturedSettings } from '@/lib/settingsService';
 import { toast } from 'sonner';
 import {
   DndContext,
@@ -151,17 +151,24 @@ const DragOverlayItem = ({ article, showImage, getCategoryColor }: {
 
 const AdminFeatured = () => {
   const [articlesList, setArticlesList] = useState<Article[]>([]);
-  const [settings, setSettings] = useState<FeaturedSettings>(getFeaturedSettings());
+  const [settings, setSettings] = useState<FeaturedSettings>(defaultFeaturedSettings);
   const [breakingNewsIds, setBreakingNewsIds] = useState<string[]>(settings.breakingNewsIds);
   const [heroFeaturedIds, setHeroFeaturedIds] = useState<string[]>(settings.heroFeaturedIds);
   const [heroSideArticleIds, setHeroSideArticleIds] = useState<string[]>(settings.heroSideArticleIds || []);
 
   useEffect(() => {
-    const loadArticles = () => setArticlesList(getArticles());
-    loadArticles();
+    const loadData = async () => {
+      setArticlesList(await getArticles());
+      const s = await getFeaturedSettings();
+      setSettings(s);
+      setBreakingNewsIds(s.breakingNewsIds);
+      setHeroFeaturedIds(s.heroFeaturedIds);
+      setHeroSideArticleIds(s.heroSideArticleIds || []);
+    };
+    loadData();
 
-    window.addEventListener('articlesUpdated', loadArticles);
-    return () => window.removeEventListener('articlesUpdated', loadArticles);
+    window.addEventListener('articlesUpdated', loadData);
+    return () => window.removeEventListener('articlesUpdated', loadData);
   }, []);
 
   // Allow all articles (drafts, scheduled, published) to be featured, except rejected ones

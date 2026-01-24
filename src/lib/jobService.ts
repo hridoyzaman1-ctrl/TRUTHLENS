@@ -36,21 +36,30 @@ export const saveJob = async (job: Partial<Job>) => {
         is_open: job.isOpen
     };
 
+    let result;
     if (job.id) {
-        return await supabase
+        result = await supabase
             .from('jobs')
             .update(jobData)
             .eq('id', job.id);
     } else {
-        return await supabase
+        result = await supabase
             .from('jobs')
             .insert(jobData);
     }
+
+    // Dispatch event to notify public pages of updates
+    window.dispatchEvent(new Event('jobsUpdated'));
+    return result;
 };
 
 export const deleteJob = async (id: string) => {
-    return await supabase
+    const result = await supabase
         .from('jobs')
         .delete()
         .eq('id', id);
+
+    // Dispatch event to notify public pages of updates
+    window.dispatchEvent(new Event('jobsUpdated'));
+    return result;
 };

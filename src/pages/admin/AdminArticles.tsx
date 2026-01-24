@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { categories, authors } from '@/data/mockData'; // Keep categories/authors static for now
+import { categories } from '@/data/mockData'; // Keep categories static for now
+import { userService, AdminUser } from '@/lib/userService';
 import { getArticles, saveArticle, deleteArticle } from '@/lib/articleService';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +46,7 @@ const AdminArticles = () => {
 
   // Load articles from service
   const [articlesList, setArticlesList] = useState<ExtendedArticle[]>([]);
+  const [authorsList, setAuthorsList] = useState<AdminUser[]>([]);
 
   useEffect(() => {
     const fetchArticles = async () => {
@@ -55,7 +57,14 @@ const AdminArticles = () => {
         submittedBy: a.author.id
       })));
     };
+
+    const fetchAuthors = async () => {
+      const authors = await userService.getAllAuthors();
+      setAuthorsList(authors);
+    };
+
     fetchArticles();
+    fetchAuthors();
   }, []);
 
   // Helper to refresh list
@@ -201,7 +210,6 @@ const AdminArticles = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const author = authors.find(a => a.id === formData.authorId) || authors[0];
     const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(Boolean);
 
     try {
@@ -216,6 +224,7 @@ const AdminArticles = () => {
         isBreaking: canSetBreaking ? formData.isBreaking : false,
         isFeatured: canSetFeatured ? formData.isFeatured : false,
         status: formData.status,
+        author: { id: formData.authorId } as any // Pass author ID for service to usage
       };
 
       if (editingArticle) {
@@ -756,7 +765,7 @@ const AdminArticles = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {authors.map(author => (
+                      {authorsList.map(author => (
                         <SelectItem key={author.id} value={author.id}>{author.name}</SelectItem>
                       ))}
                     </SelectContent>

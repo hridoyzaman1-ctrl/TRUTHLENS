@@ -15,8 +15,11 @@ export const TrendingSidebar = () => {
   const [articlesList, setArticlesList] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchData = useCallback(() => {
-    setArticlesList(getArticles());
+  const [sections, setSections] = useState(defaultSections);
+
+  const fetchData = useCallback(async () => {
+    setArticlesList(await getArticles());
+    setSections((await getSectionsSettings(defaultSections)) as any);
   }, []);
 
   // Load data and simulate minimal loading state
@@ -34,7 +37,6 @@ export const TrendingSidebar = () => {
   }, [fetchData]);
 
   // Get trending section settings
-  const sections = getSectionsSettings(defaultSections as any);
   const trendingSection = sections.find(s => s.id === 'trending');
 
   // If we have selected articles in settings, use those. Otherwise fallback to top viewed.

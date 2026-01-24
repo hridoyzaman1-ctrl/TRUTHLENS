@@ -39,14 +39,14 @@ export const adminLogout = (): void => {
   sessionStorage.removeItem('adminAuth');
 };
 
-type ViewMode = 'login' | 'reset' | 'reset-sent';
+type ViewMode = 'login' | 'signup' | 'reset' | 'reset-sent';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isAuthenticated } = useAdminAuth();
   const { logActivity } = useActivityLog();
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -55,7 +55,7 @@ const AdminLogin = () => {
   const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState<{ email?: string; password?: string }>({});
   const [viewMode, setViewMode] = useState<ViewMode>('login');
-  
+
   // Rate limiting - 5 attempts in 15 minutes, then 30 min lockout
   const rateLimiter = useRateLimiter({
     maxAttempts: 5,
@@ -92,6 +92,46 @@ const AdminLogin = () => {
     }
   };
 
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!validateForm()) return;
+    setIsLoading(true);
+
+    try {
+      // Dynamic import to avoid circular dependencies or strict checks if not exported
+      const { supabase } = await import('@/lib/supabaseClient');
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: 'Admin User', role: 'admin' }
+        }
+      });
+
+      if (error) throw error;
+
+      // Auto create profile if trigger missed (failsafe)
+      if (data.user) {
+        const { error: profileError } = await supabase.from('profiles').insert({
+          id: data.user.id,
+          full_name: 'Admin User',
+          role: 'admin',
+          email: email
+        }).select();
+
+        // Ignore profile error as trigger usually handles it, just a failsafe
+      }
+
+      toast.success('Account created! You can now log in.');
+      setViewMode('login');
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign up');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -110,8 +150,8 @@ const AdminLogin = () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Attempt login
-    const success = login(email, password, rememberMe);
-    
+    const success = await login(email, password, rememberMe); // Added await here just in case
+
     if (success) {
       rateLimiter.recordAttempt(true);
       // Log activity after successful login
@@ -121,13 +161,13 @@ const AdminLogin = () => {
         });
       }, 100);
       toast.success('Welcome back!');
-      
+
       // Redirect to intended page or admin dashboard
       const from = (location.state as { from?: string })?.from || '/admin';
       navigate(from, { replace: true });
     } else {
       rateLimiter.recordAttempt(false);
-      
+
       if (rateLimiter.attemptsRemaining <= 1) {
         setError(`Invalid credentials. ${rateLimiter.attemptsRemaining} attempt${rateLimiter.attemptsRemaining === 1 ? '' : 's'} remaining before lockout.`);
       } else {
@@ -168,6 +208,12 @@ const AdminLogin = () => {
     setValidationErrors({});
   };
 
+  const switchToSignup = () => {
+    setViewMode('signup');
+    setError('');
+    setValidationErrors({});
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4">
       <motion.div
@@ -184,24 +230,26 @@ const AdminLogin = () => {
               </div>
             </div>
             <div>
-              <img 
-                src={truthLensLogo} 
-                alt="TruthLens" 
+              <img
+                src={truthLensLogo}
+                alt="TruthLens"
                 className="h-8 mx-auto mb-2"
               />
               <CardTitle className="text-2xl font-display">
                 {viewMode === 'login' && 'Admin Portal'}
+                {viewMode === 'signup' && 'Create Admin Account'}
                 {viewMode === 'reset' && 'Reset Password'}
                 {viewMode === 'reset-sent' && 'Check Your Email'}
               </CardTitle>
               <CardDescription>
                 {viewMode === 'login' && 'Sign in to access the admin dashboard'}
+                {viewMode === 'signup' && 'Register a new administrator'}
                 {viewMode === 'reset' && 'Enter your email to receive a reset link'}
                 {viewMode === 'reset-sent' && 'We\'ve sent you password reset instructions'}
               </CardDescription>
             </div>
           </CardHeader>
-          
+
           <CardContent>
             <AnimatePresence mode="wait">
               {/* Login Form */}
@@ -317,17 +365,17 @@ const AdminLogin = () => {
                       onCheckedChange={(checked) => setRememberMe(checked === true)}
                       disabled={isLoading}
                     />
-                    <Label 
-                      htmlFor="remember" 
+                    <Label
+                      htmlFor="remember"
                       className="text-sm font-normal cursor-pointer"
                     >
                       Remember me for 7 days
                     </Label>
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
+                  <Button
+                    type="submit"
+                    className="w-full"
                     size="lg"
                     disabled={isLoading || rateLimiter.isLocked}
                   >
@@ -344,6 +392,95 @@ const AdminLogin = () => {
                     ) : (
                       'Sign In'
                     )}
+                  </Button>
+                  {/* Link to Signup */}
+                  <div className="mt-4 text-center">
+                    <button
+                      type="button"
+                      onClick={switchToSignup}
+                      className="text-sm text-primary hover:underline hover:text-primary/80"
+                    >
+                      Need an admin account? Sign Up
+                    </button>
+                  </div>
+                </motion.form>
+              )}
+
+              {/* Signup Form */}
+              {viewMode === 'signup' && (
+                <motion.form
+                  key="signup"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                  onSubmit={handleSignup}
+                  className="space-y-4"
+                >
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setValidationErrors(prev => ({ ...prev, email: undefined }));
+                        }}
+                        placeholder="you@truthlens.com"
+                        className={`pl-10 ${validationErrors.email ? 'border-destructive' : ''}`}
+                        autoComplete="email"
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="signup-password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          setValidationErrors(prev => ({ ...prev, password: undefined }));
+                        }}
+                        placeholder="••••••••"
+                        className="pl-10"
+                        autoComplete="new-password"
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    size="lg"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Creating Account...' : 'Create Admin Account'}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={switchToLogin}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back to Login
                   </Button>
                 </motion.form>
               )}
@@ -389,9 +526,9 @@ const AdminLogin = () => {
                     )}
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
+                  <Button
+                    type="submit"
+                    className="w-full"
                     size="lg"
                     disabled={isLoading}
                   >
@@ -432,10 +569,10 @@ const AdminLogin = () => {
                       <CheckCircle className="h-8 w-8 text-green-500" />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">
-                      If an account exists for <span className="font-medium text-foreground">{email}</span>, 
+                      If an account exists for <span className="font-medium text-foreground">{email}</span>,
                       you will receive password reset instructions shortly.
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -459,7 +596,7 @@ const AdminLogin = () => {
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground mt-6">
-          Protected by TruthLens Security • 
+          Protected by TruthLens Security •
           <a href="/privacy" className="hover:underline ml-1">Privacy Policy</a>
         </p>
       </motion.div>

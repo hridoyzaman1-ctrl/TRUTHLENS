@@ -5,7 +5,7 @@ import { AlertCircle, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-reac
 import { getArticles } from '@/lib/articleService';
 import { Article } from '@/types/news';
 import { Button } from '@/components/ui/button';
-import { getFeaturedSettings } from '@/lib/settingsService';
+import { getFeaturedSettings, defaultFeaturedSettings } from '@/lib/settingsService';
 
 interface BreakingNewsTickerProps {
   maxHeadlines?: number;
@@ -17,11 +17,11 @@ export const BreakingNewsTicker = ({
   autoSwipeInterval: propInterval
 }: BreakingNewsTickerProps) => {
   const [articlesList, setArticlesList] = useState<Article[]>([]);
-  const [settings, setSettings] = useState(getFeaturedSettings());
+  const [settings, setSettings] = useState(defaultFeaturedSettings);
 
-  const fetchData = useCallback(() => {
-    setArticlesList(getArticles());
-    setSettings(getFeaturedSettings());
+  const fetchData = useCallback(async () => {
+    setArticlesList(await getArticles());
+    setSettings(await getFeaturedSettings());
   }, []);
 
   useEffect(() => {

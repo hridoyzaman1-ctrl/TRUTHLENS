@@ -88,9 +88,15 @@ export const VideoSection = () => {
   const [selectedVideo, setSelectedVideo] = useState<Article | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchData = useCallback(() => {
-    setArticlesList(getArticles());
+  const [sections, setSections] = useState(defaultSections);
+
+  const fetchData = useCallback(async () => {
+    setArticlesList(await getArticles());
+    setSections((await getSectionsSettings(defaultSections)) as any);
   }, []);
+
+  // Get video section settings
+  const videoSection = sections.find(s => s.id === 'video-stories');
 
   // Load data and simulate loading
   useEffect(() => {
@@ -105,10 +111,6 @@ export const VideoSection = () => {
       window.removeEventListener('sectionsSettingsUpdated', fetchData);
     };
   }, [fetchData]);
-
-  // Get video section settings
-  const sections = getSectionsSettings(defaultSections as any);
-  const videoSection = sections.find(s => s.id === 'video-stories');
 
   // If we have selected articles in settings, use those. Otherwise fallback to filter by hasVideo.
   let videoArticles: Article[] = [];

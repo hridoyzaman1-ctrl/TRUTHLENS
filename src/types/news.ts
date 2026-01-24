@@ -43,6 +43,7 @@ export interface FeaturedSettings {
   autoSwipeInterval: number;
   breakingAutoSwipe: boolean;
   heroAutoSwipe: boolean;
+  heroSideArticleIds: string[];
 }
 
 export interface Article {

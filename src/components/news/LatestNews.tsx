@@ -6,8 +6,8 @@ import { ArticleCard } from './ArticleCard';
 export const LatestNews = () => {
   const [articlesList, setArticlesList] = useState<Article[]>([]);
 
-  const fetchArticles = () => {
-    setArticlesList(getArticles());
+  const fetchArticles = async () => {
+    setArticlesList(await getArticles());
   };
 
   useEffect(() => {

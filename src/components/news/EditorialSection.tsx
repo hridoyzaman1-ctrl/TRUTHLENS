@@ -15,8 +15,11 @@ const defaultSections = [
 export const EditorialSection = () => {
   const [articlesList, setArticlesList] = useState<Article[]>([]);
 
-  const fetchData = useCallback(() => {
-    setArticlesList(getArticles());
+  const [sections, setSections] = useState(defaultSections);
+
+  const fetchData = useCallback(async () => {
+    setArticlesList(await getArticles());
+    setSections((await getSectionsSettings(defaultSections)) as any);
   }, []);
 
   useEffect(() => {
@@ -30,7 +33,6 @@ export const EditorialSection = () => {
   }, [fetchData]);
 
   // Get editorial section settings
-  const sections = getSectionsSettings(defaultSections as any);
   const editorialSection = sections.find(s => s.id === 'editorial');
 
   // If we have selected articles in settings, use those. Otherwise fallback to category filter.

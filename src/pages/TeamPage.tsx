@@ -9,7 +9,14 @@ const TeamPage = () => {
     const [members, setMembers] = useState<TeamMember[]>([]);
 
     useEffect(() => {
-        setMembers(getTeamMembers().sort((a, b) => a.order - b.order));
+        const loadMembers = async () => {
+            const data = await getTeamMembers();
+            setMembers(data.sort((a, b) => a.order - b.order));
+        };
+        loadMembers();
+        // Listen for updates from admin dashboard
+        window.addEventListener('teamMembersUpdated', loadMembers);
+        return () => window.removeEventListener('teamMembersUpdated', loadMembers);
     }, []);
 
     return (

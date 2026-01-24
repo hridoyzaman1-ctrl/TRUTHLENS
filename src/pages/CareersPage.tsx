@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { jobs } from '@/data/mockData';
+import { getJobs } from '@/lib/jobService';
+import { Job } from '@/types/news';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Briefcase, Building, ArrowRight } from 'lucide-react';
@@ -7,6 +9,22 @@ import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 
 const CareersPage = () => {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadJobs = async () => {
+      setLoading(true);
+      const data = await getJobs();
+      setJobs(data);
+      setLoading(false);
+    };
+    loadJobs();
+    // Listen for updates from admin dashboard
+    window.addEventListener('jobsUpdated', loadJobs);
+    return () => window.removeEventListener('jobsUpdated', loadJobs);
+  }, []);
+
   const openJobs = jobs.filter(j => j.isOpen);
 
   return (
@@ -28,8 +46,8 @@ const CareersPage = () => {
         <div className="mb-12 text-center">
           <h2 className="font-display text-2xl font-bold text-foreground">Why TruthLens?</h2>
           <p className="mx-auto mt-4 max-w-3xl text-muted-foreground">
-            At TruthLens, we believe in the power of journalism to create change. We offer a dynamic 
-            work environment where creativity, integrity, and collaboration are valued. Join us in 
+            At TruthLens, we believe in the power of journalism to create change. We offer a dynamic
+            work environment where creativity, integrity, and collaboration are valued. Join us in
             our mission to deliver authentic stories that matter.
           </p>
         </div>
@@ -39,7 +57,7 @@ const CareersPage = () => {
           <h2 className="font-display text-2xl font-bold text-foreground mb-6 border-b-2 border-primary pb-2">
             Current Openings
           </h2>
-          
+
           {openJobs.length > 0 ? (
             <div className="space-y-4">
               {openJobs.map((job) => (
